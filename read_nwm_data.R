@@ -15,6 +15,8 @@ setwd(dirname(source_path))
 #----------------------------------------------------------
 # Load Data
 
+setwd("data/nwm")
+
 # read nwm data from .csv file
 dat <- read.csv("nwm_streamflow_cms_timeseries_1993_2017_retro.csv")
 
