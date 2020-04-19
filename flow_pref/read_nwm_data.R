@@ -6,7 +6,6 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(lubridate)
-library(cowplot); theme_set(theme_cowplot())
 
 # Set working directory to source file location
 source_path = rstudioapi::getActiveDocumentContext()$path
@@ -15,6 +14,7 @@ setwd(dirname(source_path))
 #----------------------------------------------------------
 # Load Data
 
+# change working directory
 setwd("data/nwm")
 
 # read nwm data from .csv file
