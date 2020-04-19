@@ -64,4 +64,14 @@ p2 <- ggplot(joined_flow_reshape, aes(x = date, y = flow_cfs, color = source)) +
 
 print(p2)
 
+# compare annual average hydrographs
+annual_av_df <- joined_flow_reshape %>%
+  group_by(month, source) %>%
+  summarize(monthly_av = mean(flow_cfs))
+
+p3 <- ggplot(annual_av_df, aes(x = month, y = monthly_av, color = source)) +
+  geom_line()
+
+print(p3)
+
 
