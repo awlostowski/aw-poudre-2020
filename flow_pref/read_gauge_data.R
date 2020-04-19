@@ -50,6 +50,7 @@ inven <- read.csv("poudre_gauge_inventory.csv")
 obs_flow_daily <- left_join(obs_flow_daily, inven[,c("ID", "Name.Description")], by = "ID")
 
 # save flow re-shaped flow data as RData file
+setwd(dirname(source_path))
 save(obs_flow_daily, file = "obs_flow.Rdata")
 
 # need to manually ADD North Fork below seaman (CLANSECO) - this is not included in the .TSTool grab for some reason. 

@@ -40,3 +40,8 @@ flow$time_utc = as.Date(substring(as.character(flow$time_utc),1,10))
 # join AW reach names
 flow <- left_join(flow, rchs[,c("river_sect","featureID")], by = "featureID")
 
+#-----------------------------------------------------------
+# save data
+setwd(dirname(source_path))
+save(flow, file = "sim_flow.Rdata")
+
