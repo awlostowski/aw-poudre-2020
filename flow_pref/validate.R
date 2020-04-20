@@ -7,6 +7,7 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 library(cowplot); theme_set(theme_cowplot())
+library(hydroTSM)
 
 # Set working directory to source file location
 source_path = rstudioapi::getActiveDocumentContext()$path
@@ -67,11 +68,33 @@ print(p2)
 # compare annual average hydrographs
 annual_av_df <- joined_flow_reshape %>%
   group_by(month, source) %>%
-  summarize(monthly_av = mean(flow_cfs))
+  summarize(monthly_av = mean(flow_cfs, na.rm = T))
 
 p3 <- ggplot(annual_av_df, aes(x = month, y = monthly_av, color = source)) +
   geom_line()
 
 print(p3)
+
+# compare flow duration curves
+# use hydroTSM to develop exceedance probabilities
+flow_duration <- fdc(joined_flow[ ,c("simulated_flow_cfs","observed_flow_cfs")])
+
+flow_duration <- as.data.frame(flow_duration) %>%
+  rename(simulated = simulated_flow_cfs,
+         observed = observed_flow_cfs) %>%
+  gather(source_prob,exprob) %>%
+  cbind(
+    gather(ungroup(joined_flow[ ,c("simulated_flow_cfs","observed_flow_cfs")]),source_flow,flow)
+    )
+
+p4 <- ggplot(flow_duration, aes(x = exprob, y = flow, color = source_prob)) +
+  geom_line(size = 2) +
+  labs(x = "Exceedance Probability", 
+       y = "Flow (cfs)") +
+  scale_color_manual(values = c(observed = "blue", simulated = "red"))
+
+print(p4)
+
+
 
 
