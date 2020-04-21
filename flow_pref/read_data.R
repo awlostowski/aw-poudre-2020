@@ -11,6 +11,8 @@ library(lubridate)
 source_path = rstudioapi::getActiveDocumentContext()$path
 setwd(dirname(source_path))
 
+# This script loads and formats observed and simulated flow data.
+
 #--------------------------------------------------------------------------
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #
@@ -22,7 +24,7 @@ setwd(dirname(source_path))
 setwd(dirname(source_path))
 setwd("../data/gauge")
 
-#--------------------------------------------------------------------------
+#------------------------------Load from TSTool output---------------------------------------------
 # daily average data obtained from TSTools
 obs_flow = read.csv("poudre_gauge_data.csv")
 
@@ -51,8 +53,7 @@ inven <- read.csv("poudre_gauge_inventory.csv")
 # join guage names
 obs_flow_tstool <- left_join(obs_flow_daily, inven[,c("ID", "Name.Description")], by = "ID")
 
-#--------------------------------------------------------------------------------
-# raw data from DWR. Create daily record with same formatting as 'obs_flow_tstool'
+#------------------------------Load from DWR file--------------------------------------------------
 
 obs_flow <- read.table(file = "CLANSECO_42120074145.txt", sep = "\t",header = F, skip = 17,
                        col.names = c("ID", "timestamp", "flow_cfs")) %>%
@@ -77,10 +78,56 @@ obs_flow <- obs_flow %>%
 I = which(obs_flow$date < as.Date("2005-01-01"))
 obs_flow <- obs_flow[-I,]
 
+#------------------------------Bind observations together and save --------------------------------------------------
 # bind N.Fk. data to 'obs_flow_tstool'
 observations <- rbind(obs_flow_tstool,obs_flow)
 
-#--------------------------------------------------------------------------------
-# save flow re-shaped flow data as RData file
+# save the data locally
 setwd(dirname(source_path))
 save(observations, file = "obs_flow.Rdata")
+
+
+#---------------------------------------------------------------------------
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#
+# Load and organize nwm flow simulations
+#
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+# navigate to the /data/gauge directory, where flow observations are stored
+setwd(dirname(source_path))
+setwd("../data/nwm")
+
+#------------------------------Load and reshape NWM output--------------------------------------------------
+
+# read nwm data from .csv file
+dat <- read.csv("nwm_streamflow_cms_timeseries_1993_2017_retro.csv")
+
+# load NHD reach attributes and AW reach names
+rchs <- read.csv("nhd_reach_attributes.csv")
+
+# gather data into a longer format
+flow <- dat %>%
+  gather("featureID", "flow_cms", 2:11)
+
+# convert NHD featureID from string to numeric
+flow$featureID = as.numeric(substring(flow$featureID,2,nchar(flow$featureID)))
+rchs$featureID = as.numeric(rchs$featureID)
+
+# convert date from factor to numeric
+flow$time_utc = as.Date(substring(as.character(flow$time_utc),1,10))
+
+# unit conversion: cubic meters per second to cubic feet per second
+flow$flow_cms = flow$flow_cms * 35.314666212661
+flow <- rename(flow, flow_cfs = flow_cms)
+
+# join AW reach names and rename columns to align with 'observations'
+simulations <- left_join(flow, rchs[,c("river_sect","featureID")], by = "featureID") %>%
+  rename(date = time_utc,
+         ID = featureID,
+         Name.Description = river_sect)
+
+#------------------------------Save simulated flows--------------------------------------------------
+# save data
+setwd(dirname(source_path))
+save(simulations, file = "sim_flow.Rdata")

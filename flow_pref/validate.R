@@ -19,7 +19,6 @@ obs <- obs_flow_daily; rm(obs_flow_daily)
 load(file = "sim_flow.Rdata")
 sim <- flow; rm(flow)
 
-
 #--------------------------------------------------------
 # Monthly average obs & sim flows near the canyon mouth
 
