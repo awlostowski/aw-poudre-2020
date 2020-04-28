@@ -117,6 +117,8 @@ sim_mly_corr <- simulations %>%
   rename(flow_cfs = corr) %>%
   spread(ID, flow_cfs)
 
+
+
 #--------------------------------------------------------------------------
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #
@@ -173,6 +175,15 @@ flow_quants <- left_join(flow_quants,unique(simulations[,c("ID","Name.Descriptio
 # explort to .csv file
 setwd(dirname(source_path))
 write.csv(flow_quants, file = "predicted_flow_quantiles.csv")
+
+# save-out corrected monthly flow simulations
+sim_mly_corr_saveout <- sim_mly_corr %>%
+  gather(ID, flow_cfs, 2:11) %>%
+  mutate_each_(funs(as.numeric), 2) %>%
+  left_join(unique(simulations[,c("ID","Name.Description")]), by = "ID") %>%
+  arrange(ID)
+
+save(sim_mly_corr_saveout, file = "simulated_monthly_flows_corrected.Rdata")
 
 
 
