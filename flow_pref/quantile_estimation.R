@@ -45,7 +45,7 @@ obs_mly_abnfk <- observations %>%
   summarize(date = first(date),
             flow_cfs = mean(flow_cfs, na.rm = T)) %>% # monthly average flow
   spread(ID,flow_cfs) %>%
-  select(date,'6752000', CLANSECO) %>%                # isolate observations from the canyon mouth and north fork
+  select(date,`6752000`, CLANSECO) %>%                # isolate observations from the canyon mouth and north fork
   mutate(ABNFK = `6752000` - CLANSECO) %>%            # subtract north fork flows from canyon mouth flows, to estimate flows above confluence
   ungroup()
 
@@ -161,8 +161,8 @@ flow_quants <- filter(sim_mly_corr, month(date) >= 4 & month(date) <= 10) %>%
             q25 = quantile(flow_cfs,probs = 0.25),
             q50 = quantile(flow_cfs,probs = 0.5),
             q75 = quantile(flow_cfs,probs = 0.75),
-            q90  = quantile(flow_cfs,probs = 0.90)
-            ) %>%
+            q90  = quantile(flow_cfs,probs = 0.90),
+            q99 = quantile(flow_cfs,probs = 0.99)) %>%
   ungroup()
 
 # change ID from character to numeric for joining purposes
@@ -184,6 +184,8 @@ sim_mly_corr_saveout <- sim_mly_corr %>%
   arrange(ID)
 
 save(sim_mly_corr_saveout, file = "simulated_monthly_flows_corrected.Rdata")
+
+
 
 
 
