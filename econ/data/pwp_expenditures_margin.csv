@@ -1,0 +1,11 @@
+﻿category,exp_res,exp_vis,margin
+Gasoline,10.11,13.73,0.141871128
+Restaurant,4.47,8.69,0.254390159
+Groceries,3.74,7.83,0.254390159
+Supplies,28.37,17.63,0.378527437
+Public Land Camps,0,1.23,1
+Private Land Camps,0,1.33,1
+Hotel,0,0,1
+Equipment Rental,0.2,2.48,1
+Guide,0,0,1
+Other,0.33,0.21,1
