@@ -1,25 +1,22 @@
 remove(list = ls()) # clear all workspace variables
 cat("\014")         # clear command line
 
-library(rstudioapi)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
+library(here)
+library(tidyverse)
 library(lubridate)
-library(cowplot); theme_set(theme_cowplot())
-library(stringr)
 library(rvest)
-
-# Set working directory to source file location
-source_path = rstudioapi::getActiveDocumentContext()$path
-setwd(dirname(source_path))
-
 
 # blog archives are organized by month and year.
 page = seq(1,308,1)
 
-# remove page 124
-page = page[-which(page == 124 | page == 137 | page == 159 | page == 165 | page == 193)]
+# remove a handful of pages where some posts do not have titles - this trips up my workflow.
+# while I could find an end-around, this is a temporary solution...
+
+# !!!!!!!!!!!!!!!!!!!!
+# This solution is problematic because pages are organized from 1 to n, where 1 is the most recent.
+# So, every time a new page is generated, we will need to change these values in order for the code to run!
+
+page = page[-which(page == 126 | page == 139 | page == 161 | page == 167 | page == 195)]
 
 
 # loop over archive years
@@ -157,6 +154,6 @@ for (n in page) {
   
 
 # SAVE data ----------------------------------------
-save(stage, file = "scractch_stage_dat.Rdata")
+save(stage, file = here::here("flow_pref","rating-curves","stage_data.Rdata"))
 
 

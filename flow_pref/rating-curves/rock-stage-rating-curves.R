@@ -1,28 +1,17 @@
 remove(list = ls()) # clear all workspace variables
 cat("\014")         # clear command line
 
-library(rstudioapi)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
+library(here)
+library(tidyverse)
 library(lubridate)
 library(cowplot); theme_set(theme_cowplot())
-library(hydroTSM)
-library(RColorBrewer)
 library(broom)
 
-# Set working directory to source file location
-source_path = rstudioapi::getActiveDocumentContext()$path
-setwd(dirname(source_path))
-
 # load monthly flow data. Corrected NWM simulations
-setwd("../")
-load("simulated_monthly_flows_corrected.Rdata")
-
+load(here::here("flow_pref","rating-curves","corrected_sim_flow.Rdata"))
 
 # load rock stage observations
-setwd(dirname(source_path))
-load("scractch_stage_dat.Rdata")
+load(here::here("flow_pref","rating-curves","stage_data.Rdata"))
 
 # remove erronious data point at Rustic. Stage should not be ~150 ft!
 stage$Rustic[which(stage$Rustic > 50)] = NA
@@ -55,7 +44,6 @@ p <- ggplot(stage_flow, aes(stage_av, flow_cfs)) +
        y = "Monthly average flow (cfs)")
 
 print(p)
-
 
 # Generate stage-discharge rating relationships at each site. Stage from Pine View
 site = unique(stage_flow$Name.Description)
@@ -95,18 +83,18 @@ for (i in 1:length(site)) {
   
 }
 
-# load flow quantiles and find corresponding flow level
-setwd("../")
-quants <- read.csv("predicted_flow_quantiles.csv")
-
-quants <- quants %>%
-  gather(quantile, flow, q10:q99) %>%
-  filter(Name.Description != "BELOW FILTER PLANT TO PICNIC ROCK ACCESS") %>%
-  arrange(Name.Description) %>%
-  mutate(flow_cfs = floor(flow)) %>%
-  left_join(rating_stage_predictions, by = c("Name.Description", "flow_cfs"))
-
-# save-out quantile and stage data
-setwd(dirname(source_path))
-
-write.csv(quants, file = "quantile_stages.csv")
+# # load flow quantiles and find corresponding flow level
+# setwd("../")
+# quants <- read.csv("predicted_flow_quantiles.csv")
+# 
+# quants <- quants %>%
+#   gather(quantile, flow, q10:q99) %>%
+#   filter(Name.Description != "BELOW FILTER PLANT TO PICNIC ROCK ACCESS") %>%
+#   arrange(Name.Description) %>%
+#   mutate(flow_cfs = floor(flow)) %>%
+#   left_join(rating_stage_predictions, by = c("Name.Description", "flow_cfs"))
+# 
+# # save-out quantile and stage data
+# setwd(dirname(source_path))
+# 
+# write.csv(quants, file = "quantile_stages.csv")

@@ -1,18 +1,10 @@
 remove(list = ls()) # clear all workspace variables
 cat("\014")         # clear command line
 
-library(rstudioapi)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
+library(here)
+library(tidyverse)
 library(lubridate)
-library(cowplot); theme_set(theme_cowplot())
 library(hydroTSM)
-library(RColorBrewer)
-
-# Set working directory to source file location
-source_path = rstudioapi::getActiveDocumentContext()$path
-setwd(dirname(source_path))
 
 # this script will compare simulated flows to observations, then apply a bias correction to simulated flow duration curves
 
@@ -25,8 +17,8 @@ setwd(dirname(source_path))
 
 #------------------------------Load data ---------------------------------------------
 # load the nwm-simulated and observed streamflow data sets
-load(file = "obs_flow.Rdata")
-load(file = "sim_flow.Rdata")
+load(file = here::here("flow_pref","rating-curves","obs_flow.Rdata"))
+load(file = here::here("flow_pref","rating-curves","sim_flow.Rdata"))
 
 #--------------------------------------------------------------------------
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -117,65 +109,6 @@ sim_mly_corr <- simulations %>%
   rename(flow_cfs = corr) %>%
   spread(ID, flow_cfs)
 
-
-
-#--------------------------------------------------------------------------
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#
-# Construct flow duration curves from simulated flows, using corrected data
-#
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-# use hydroTSM to develop exceedance probabilities
-flow_duration <- fdc(sim_mly_corr[ ,2:11])
-
-flow_duration <- as.data.frame(flow_duration) %>%
-  gather(ID,exprob) %>%
-  cbind(
-    gather(sim_mly_corr,ID,flow_cfs,2:11)[,c("flow_cfs")]
-    ) %>%
-  filter(is.na(flow_cfs) == F & is.na(exprob) == F)
-
-# plot ensemble of flow duration curves
-p4 <- ggplot(flow_duration, aes(x = exprob, y = flow_cfs, color = ID)) +
-  geom_line() +
-  scale_y_continuous(trans='log10')
-  labs(x = "Exceedance Probability", 
-       y = "Flow (cfs)")
-
-print(p4)
-
-#--------------------------------------------------------------------------
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#
-# Calculate quantile flow for each segment
-#
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-# calculate flow quantiles
-flow_quants <- filter(sim_mly_corr, month(date) >= 4 & month(date) <= 10) %>%
-  gather(ID, flow_cfs, 2:11) %>%
-  filter(is.na(flow_cfs) == F) %>%
-  group_by(ID) %>%
-  summarize(q10 = quantile(flow_cfs,probs = 0.1),
-            q25 = quantile(flow_cfs,probs = 0.25),
-            q50 = quantile(flow_cfs,probs = 0.5),
-            q75 = quantile(flow_cfs,probs = 0.75),
-            q90  = quantile(flow_cfs,probs = 0.90),
-            q99 = quantile(flow_cfs,probs = 0.99)) %>%
-  ungroup()
-
-# change ID from character to numeric for joining purposes
-flow_quants$ID = as.numeric(flow_quants$ID)
-
-# join reach names 
-flow_quants <- left_join(flow_quants,unique(simulations[,c("ID","Name.Description")]), by = "ID") %>%
-  arrange(ID)
-
-# explort to .csv file
-setwd(dirname(source_path))
-write.csv(flow_quants, file = "predicted_flow_quantiles.csv")
-
 # save-out corrected monthly flow simulations
 sim_mly_corr_saveout <- sim_mly_corr %>%
   gather(ID, flow_cfs, 2:11) %>%
@@ -183,7 +116,66 @@ sim_mly_corr_saveout <- sim_mly_corr %>%
   left_join(unique(simulations[,c("ID","Name.Description")]), by = "ID") %>%
   arrange(ID)
 
-save(sim_mly_corr_saveout, file = "simulated_monthly_flows_corrected.Rdata")
+save(sim_mly_corr_saveout, file = here::here("flow_pref","rating-curves","corrected_sim_flow.Rdata"))
+
+# #--------------------------------------------------------------------------
+# #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# #
+# # Construct flow duration curves from simulated flows, using corrected data
+# #
+# #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# 
+# # use hydroTSM to develop exceedance probabilities
+# flow_duration <- fdc(sim_mly_corr[ ,2:11])
+# 
+# flow_duration <- as.data.frame(flow_duration) %>%
+#   gather(ID,exprob) %>%
+#   cbind(
+#     gather(sim_mly_corr,ID,flow_cfs,2:11)[,c("flow_cfs")]
+#     ) %>%
+#   filter(is.na(flow_cfs) == F & is.na(exprob) == F)
+# 
+# # plot ensemble of flow duration curves
+# p4 <- ggplot(flow_duration, aes(x = exprob, y = flow_cfs, color = ID)) +
+#   geom_line() +
+#   scale_y_continuous(trans='log10')
+#   labs(x = "Exceedance Probability", 
+#        y = "Flow (cfs)")
+# 
+# print(p4)
+# 
+# #--------------------------------------------------------------------------
+# #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# #
+# # Calculate quantile flow for each segment
+# #
+# #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# 
+# # calculate flow quantiles
+# flow_quants <- filter(sim_mly_corr, month(date) >= 4 & month(date) <= 10) %>%
+#   gather(ID, flow_cfs, 2:11) %>%
+#   filter(is.na(flow_cfs) == F) %>%
+#   group_by(ID) %>%
+#   summarize(q10 = quantile(flow_cfs,probs = 0.1),
+#             q25 = quantile(flow_cfs,probs = 0.25),
+#             q50 = quantile(flow_cfs,probs = 0.5),
+#             q75 = quantile(flow_cfs,probs = 0.75),
+#             q90  = quantile(flow_cfs,probs = 0.90),
+#             q99 = quantile(flow_cfs,probs = 0.99)) %>%
+#   ungroup()
+# 
+# # change ID from character to numeric for joining purposes
+# flow_quants$ID = as.numeric(flow_quants$ID)
+# 
+# # join reach names 
+# flow_quants <- left_join(flow_quants,unique(simulations[,c("ID","Name.Description")]), by = "ID") %>%
+#   arrange(ID)
+# 
+# # explort to .csv file
+# setwd(dirname(source_path))
+# write.csv(flow_quants, file = "predicted_flow_quantiles.csv")
+
+
 
 
 
