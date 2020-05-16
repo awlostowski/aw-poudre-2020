@@ -71,3 +71,36 @@ respondent.attributes <- cbind(id_attributes,
                                skill_level, 
                                user_type, 
                                frequency)
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#
+# tidy flow preference data
+#
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+flowpref.dat <- data[1:nrow(data), 29:54]
+
+colnames(flowpref.dat) = as.character(t(flowpref.dat[1,]))
+
+flowpref.dat <- cbind(respondent.attributes$respondent.id, flowpref.dat[-1,]) %>%
+  rename(id = `respondent.attributes$respondent.id`) %>%
+  gather(flow, preference, `100`:`100000`) %>%
+  mutate(preference.code = case_when(preference == "Totally Unacceptable" ~ -3,
+                                    preference == "Moderately Unacceptable" ~ -2,
+                                    preference == "Slightly Unacceptable" ~ -1,
+                                    preference == "Martinal" ~ 0,
+                                    preference == "Slightly Acceptable" ~ 1,
+                                    preference == "Moderately Acceptable" ~ 2,
+                                    preference == "Totally Acceptable" ~ 3))
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#
+# save data for later analysis
+#
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+save(respondent.attributes, file = here::here("flow_pref","survey-analysis","example-development","cataract-canyon","respondend-attributes.Rdata"))
+save(flowpref.dat, file = here::here("flow_pref","survey-analysis","example-development","cataract-canyon","flow-pref-data.Rdata"))
+
+
+  
