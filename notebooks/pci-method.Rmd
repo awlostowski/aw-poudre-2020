@@ -1,0 +1,74 @@
+---
+title: "Calculating the Potential for Conflict Index"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r import_raw_data, include=FALSE}
+library(here)
+library(tidyverse)
+library(lubridate)
+library(cowplot); theme_set(theme_cowplot())
+
+load(here::here("flow_pref","survey-analysis","flow-pref-analysis-workspace.Rdata"))
+```
+
+- The Potential for Conflict Index describes the ammount of agreement or disagreement on flow preferenc among survey respondants.
+- Larger PCI scores indicate more disagreement. Smaller PCI scores indicate less disagreement (more agreement)
+- For example a PCI score of 1 indicates that respondents are evenly split into two polar-opposit camps (e.g unfavorable v. favorable)
+- On the other hand a PCI score of 0 indicates complete consensus among respondents
+- This notebook breaks down how PCI is calculated in `flow-pref-analysis.R`
+
+## Step 1: Import tidy survey response data
+- Tidy survey response data exported from `tidy-response-data.R` as .Rdata files
+- One file contains respondent attribute data
+- Another file contains flow preference data
+```{r}
+load(file = here::here("flow_pref","survey-analysis","respondend-attributes.Rdata"))
+load(file = here::here("flow_pref","survey-analysis","flow-pref-data.Rdata"))
+```
+
+## Step 2: Calculate average preference and PCI
+- Calculate average preference score for each flow bin
+- PCI is observed sum of the preference score distance vector, divided by the theoretical maxumum sum of the distance vector
+- the `dist` command is used to calculate a distance matrix, quantifying the distance between each pair of preference scores in each flow bin
+
+```{r}
+segment_name = "Filter Plant"
+
+# create a new data frame by piping together several commands
+results <- flowpref.dat %>%
+  
+  # Remove NAs and select a specific segment
+  filter(is.na(preference.code) == 0 & segment.name == segment_name) %>%
+  
+  # calculate the average pref score and PCI2 statistic of each flow bin
+  group_by(as.numeric(flow)) %>%
+  summarize(pref.average = mean(preference.code),   # average preference
+            d = sum(abs(dist(preference.code))),    # sum of the score distance vector
+            m = sum(abs(dist(rep(c(-3,3),n())))),   # maximum possible sum of distance vector
+            pci2 = d/m) %>%                         # PCI2 = d/m
+  
+  # rename a variable
+  rename(flow = `as.numeric(flow)`)
+
+head(results, n = 20)
+```
+
+## Step 3: Visualize the results
+- Plot avergae flow preference score as a function of flow, marker size is proportional to PCI
+- Jitter individual responses as another way of showing respondent agreement/disagreement
+```{r}
+p1 <- ggplot() +
+  geom_point(data = results, aes(x = flow, y = pref.average, size = pci2), color = 'blue') +
+  scale_size(range = c(0.1, 5)) +
+  geom_jitter(data = filter(flowpref.dat, segment.name == segment_name), aes(x = as.numeric(flow), y = preference.code), size = 1, alpha = 0.3) +
+  labs(x = "Flow (cfs)",
+       y = "Preference Score") +
+  geom_hline(yintercept = 0) +
+  ggtitle("Filter Plant flow preference")
+
+print(p1)
+```
+

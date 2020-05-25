@@ -27,7 +27,7 @@ load(file = here::here("flow_pref","survey-analysis","flow-pref-data.Rdata"))
 #
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-segment_name = "Big South"
+segment_name = "Filter Plant"
 
 
 results <- flowpref.dat %>%
@@ -65,3 +65,7 @@ p1 <- ggplot() +
   geom_hline(yintercept = 0)
 
 print(p1)
+
+
+
+save.image(file = here::here("flow_pref","survey-analysis","flow-pref-analysis-workspace.Rdata"))

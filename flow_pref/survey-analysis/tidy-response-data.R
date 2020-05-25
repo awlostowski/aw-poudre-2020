@@ -8,7 +8,7 @@ library(lubridate)
 # This script will load and tidy survey response data
 
 # import survey respinse data
-data <- read.csv(here::here("data","survey_monkey","poudre-survey-20200515.csv"))
+data <- read.csv(here::here("data","survey_monkey","poudre-survey-20200525.csv"))
 
 #--------------------------------------------------------------------------
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -943,5 +943,8 @@ flowpref.dat$flow <- str_remove(flowpref.dat$flow, "'")
 save(respondent.attributes, file = here::here("flow_pref","survey-analysis","respondend-attributes.Rdata"))
 save(flowpref.dat, file = here::here("flow_pref","survey-analysis","flow-pref-data.Rdata"))
 
+save(respondent.attributes, file = here::here("shiny","flow-pref-viz","data","respondend-attributes.Rdata"))
+save(flowpref.dat, file = here::here("shiny","flow-pref-viz","data","flow-pref-data.Rdata"))
 
+save.image(file = here::here("flow_pref","survey-analysis","tidy-response-workspace.Rdata"))
   

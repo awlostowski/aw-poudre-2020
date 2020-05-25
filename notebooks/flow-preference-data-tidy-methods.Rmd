@@ -1,0 +1,86 @@
+---
+title: "Importing and tidying survey response data"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r import_raw_data, include=FALSE}
+library(here)
+library(tidyverse)
+library(lubridate)
+
+load(here::here("flow_pref","survey-analysis","tidy-response-workspace.Rdata"))
+```
+- This notebook documents the process of reading, parsing and tidying raw Survey Monkey response data
+- It explains code in `tidy-response-data.R`
+- Raw data are not ideally formatted for quick and reproducable analysis. Many lines of code are devoted to creating "tidy" formatted data. This involves first selecting specific columns from the raw data, renamming variables, and sometimes re-arranging.
+
+## Step 1: import raw SurveyMonkey data
+- Raw response data are exported in .csv files from SurveyMonkey. The first step reading data into R. Upon exporting SurveyMonkey data, I change the native file name to 'poudre-survey-YYYYMMDD.csv', using the export data as a version tag. Edit which version of the data are read into the analysis by changing the filnename fed into the `read.csv` command. 
+```{r}
+data <- read.csv(here::here("data","survey_monkey","poudre-survey-20200525.csv"))
+```
+
+## Step 2: parse and tidy respondent attribute data
+- Respondent attribute data are contained in the first columns of the raw data.
+- Specific attributes variables are parsed by column indices, renamed, and often reformatted.
+- For example, basic respondent attribute data are contained in columns 1 through 10 of the raw data. After extracting these columns, new variable names are appointed. 
+```{r}
+# ID attributes contained in column 1 through 10
+id_attributes <- data[2:nrow(data), 1:10] %>%
+  
+  # rename culumns to something more intuitive
+  rename(respondent.id = Respondent.ID,
+         start.date = Start.Date,
+         end.date = End.Date,
+         ip.address = IP.Address,
+         name = Your.name) %>%
+  
+  # select and arrange columns columns
+  select(respondent.id,start.date,end.date,ip.address,name)
+```
+- All respondeant attribute data are placed into a single data frame for future use.
+```{r}
+head(respondent.attributes, n = 100)
+```
+
+## Step 3: parse and tidy flow preference attribute data
+- Flow preference results are extracted on a reach-by-reach basis. 
+- Care was taken during code development to precisely identify the columns containing a reaches flow preference data. 
+- Here is an example of how data are extracted for Filter Plant: 
+```{r, warning=FALSE}
+# Filter plant flow preference responses are contained in columns 67 through 87
+flowpref <- data[1:nrow(data), 67:87]
+
+# use flow rate as column headers
+colnames(flowpref) = as.character(t(flowpref[1,]))
+
+# create flowpref variable, by piping several operations together
+flowpref <- cbind(respondent.attributes$respondent.id, flowpref[-1,]) %>% # bind respondant ID number for cross referencing
+  
+  # rename ID column
+  rename(respondent.id = `respondent.attributes$respondent.id`) %>% # rename ID column
+  
+  # respape data from a wide to long format
+  gather(flow, preference, `100`:`4000`) %>%
+  
+  # numerically code responses
+  mutate(preference.code = case_when(preference == "Unacceptable" ~ -2,
+                                     str_detect(preference, c("Moderately","Unacceptable")) == 1 ~ -1,
+                                     preference == "Marginal" ~ 0,
+                                     preference == "Moderately Acceptable" ~ 1,
+                                     preference == "Acceptable" ~ 2)) %>%
+  
+  # add segment name
+  mutate(segment.name = "Filter Plant") %>%
+  
+  # re-arrange variables
+  select(respondent.id, segment.name, everything())
+
+head(flowpref,n = 100)
+```
+
+## Step 4: Save data for later use
+- Respondent attributes and flow preference data are saved in two separate data frames.
+- Each data frame has a `respondent.ID` variable, which allows for easy cross referencing

@@ -1,0 +1,12 @@
+name: flow-pref-viz
+title: flow-pref-viz
+username:
+account: awlostowski
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2354645
+bundleId: 3188661
+url: https://awlostowski.shinyapps.io/flow-pref-viz/
+when: 1590438974.16485
+asMultiple: FALSE
+asStatic: FALSE
