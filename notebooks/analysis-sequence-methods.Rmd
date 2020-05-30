@@ -42,7 +42,7 @@ head(conversion_table, n = 6)
 ```
 
 
-- Respondent attributes:
+- Respondent attributes, such as home address, percieved level of experience,  Respondent attributes:
 ```{r}
 head(respondent.attributes, n = 100)
 ```
