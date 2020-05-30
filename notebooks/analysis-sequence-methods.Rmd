@@ -1,0 +1,81 @@
+---
+title: "Flow Preference Analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r import_raw_data, include=FALSE}
+library(here)
+library(tidyverse)
+library(lubridate)
+
+load(here::here("flow_pref","survey-analysis","tidy-response-workspace.Rdata"))
+```
+
+# Data Collection
+- Flow preference surveys are designed to gauge user-percieved quality of whitewater conditions as a function of flow.
+- Surveys ask respondents to associate a preference ranking with specified flow rates.
+- [Graphic illustrating survey question with boxes and check marks]
+- Surveys are distributed by Survey Monkey
+- As of MM/DD we have recieved N responses
+
+![The survey asks responents to indicate their percieved preference for specific flow rates.](images/survey-schematic.jpg)
+
+# Data Processing
+- The data exported from Survey monkey are not optimally formatted for analysis. 
+- tidy
+- Numericize preference response
+```{r}
+string_response = c("Acceptable",
+                   "Somewhat Acceptable",
+                   "Marginal",
+                   "Somewhat Unacceptable",
+                   "Unacceptable")
+
+numeric_response = c(2,1,0,-1,-2)
+
+conversion_table <- data.frame(string_response,
+                               numeric_response)
+
+head(conversion_table, n = 6)
+```
+
+
+- Respondent attributes:
+```{r}
+head(respondent.attributes, n = 100)
+```
+- Flow preference
+```{r}
+head(flowpref.dat, n = 100)
+```
+
+
+
+# Data QC
+- Screen respondents that may have difficulty assessing flow conditions. 
+- The quality of the response is assumed to be a function of historical visitation. Higher visitation frequency exposes the user to a wider range of flows. By directly experiencing flow conditions, less extrapolation is needed
+- User extrapolation. If a respondent has not experienced a particular flow condion, they are forced to mentall interpolate or extrapolated beyond their experience. 
+- Experience thresholds:
+  - reporting confidence
+  - Trip frequency
+
+# Visualization
+- Flow preference curves, plotting preference score as a function of flow rate
+- Need to effectively visualize an ensemble of individual responses. 
+- Simply plotting individual responses is messy becuase flow preference varies among respondents
+- Calculate the average preference score at each flow rate.
+- What about the variability>
+- Potential for Conflict Index quantifies the level of disagreement among respondants. 
+- Reflect the PCI with marker size
+
+# Analytics
+- Metrics are used to quantitatively characterize the shape of flow preference curves.
+1. Optimal flow
+2. Optimal flow PCI
+3. Neutral flow
+4. Neutral flow PCI
+5. Average PCI
+6. Integrated rech preference
+7. Slope of the falling limb
