@@ -27,11 +27,9 @@ survey <- read.csv("private_data/pwp_survey_20200612.csv",
 
 # Parse the date columns
 survey <- survey %>% 
-  mutate_at(vars(contains("date")), list(~ mdy_hms(., tz = "US/Mountain")))
+  mutate_at(vars(contains("date")), list(~ mdy_hms(., tz = "US/Mountain"))) %>% 
+  mutate(visit_date = as.Date(visit_datetime, tz = "US/Mountain"))
 
-
-# Concatenate visit purposes
-# NA seems to correspond to "other"
 
 ###############################################################################
 # Import Poudre gage data (for joining with flow ratings)
@@ -53,4 +51,14 @@ flow <- paste0(dl1, site_no, dl2, begin_date, dl3, end_date) %>%
              col.names = c("agency", "site_no", "date", "flow", "qc")) %>% 
   mutate(date = as.Date(date))
   
-  
+###############################################################################
+###############################  Import Data  #################################
+###############################################################################
+
+
+
+# Make a total expenditure column
+
+
+# Concatenate visit purposes
+# NA seems to correspond to "other"
