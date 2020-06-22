@@ -77,26 +77,28 @@ for(i in 1:length(segments)){
     geom_point(data = filter(results, n_obs > 2), 
                aes(x = flow, y = pref.average, size = pci2), 
                color = 'blue') +
-    labs(x = "Flow (cfs)",
-         y = "Preference Score",
-         title = paste0(segment_name, " Flow Preference Curve")) +
     geom_hline(yintercept = 0)
   
+  # Add axis labels and titles
+  # Some reaches have stage values, others have flow
+  # So use if-else to assign correct label
+  if(max(results$flow, na.rm = T) < 100){
+    flow_pref_plot <- flow_pref_plot +
+      labs(x = "Stage (ft.)",
+           y = "Preference Score",
+           title = paste0(segment_name, " Stage Preference Curve"))
+  }else{
+    flow_pref_plot <- flow_pref_plot +
+      labs(x = "Flow (cfs)",
+           y = "Preference Score",
+           title = paste0(segment_name, " Flow Preference Curve"))  
+    }
+
   # Export plot
   save_plot(filename = paste0("plots/flow_pref/flow_pref_",
-                              segment_name,
+                              segment_name2,
                               ".png"),
             plot = flow_pref_plot,
             base_width = 7)
   
 }
-
-
-
-
-ggplot() +
-  geom_point(data = filter(results, pci2 > 0.02), aes(x = flow, y = pref.average, size = pci2), color = 'blue') +
-  #geom_point(data = filter(flowpref.dat, segment.name == segment_name), aes(x = as.numeric(flow), y = preference.code), size = 1, alpha = 0.3) +
-  labs(x = "Flow (cfs)",
-       y = "Preference Score") +
-  geom_hline(yintercept = 0)
