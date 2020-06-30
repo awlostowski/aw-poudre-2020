@@ -11,19 +11,24 @@ library(cowplot); theme_set(theme_cowplot())
 
 # Import data
 # Note .RData files are in gitignore, so these must be on your local machine
-load(file = here("flow_pref", "survey-analysis", "respondend-attributes.Rdata"))
-load(file = here("flow_pref", "survey-analysis", "flow-pref-data.Rdata"))
+# load(file = here("flow_pref", "survey-analysis", "respondend-attributes.Rdata"))
+# load(file = here("flow_pref", "survey-analysis", "flow-pref-data.Rdata"))
+respondent.attributes <-
+  readRDS(file = here("private_data", "respondent-attributes_20200630.RDS"))
+flowpref.dat <- 
+  readRDS(file = here("private_data", "flow-pref-data_20200630.RDS"))
 
-# Convert flow to numeric
-flowpref.dat <- flowpref.dat %>% 
-  mutate(flow = as.numeric(flow))
-
-# Assign all users an experience code
-respondent.attributes <- respondent.attributes %>% 
-  mutate(skill = case_when(skill.novice == T ~ "novice",
-                           skill.intermediate == T ~ "intermed",
-                           skill.advanced == T ~ "advanced",
-                           skill.expert == T ~ "expert"))
+# Commented code moved to poudre_survey_clean_format
+# Can be deleted
+#  # Convert flow to numeric
+# flowpref.dat <- flowpref.dat %>% 
+#   mutate(flow = as.numeric(flow))
+# # Assign all users an experience code
+# respondent.attributes <- respondent.attributes %>% 
+#   mutate(skill = case_when(skill.novice == T ~ "novice",
+#                            skill.intermediate == T ~ "intermed",
+#                            skill.advanced == T ~ "advanced",
+#                            skill.expert == T ~ "expert"))
 
 # Next a list of unqualified respondent IDs based on:
 # 1) skill level (remove novice)
@@ -32,15 +37,15 @@ respondent.attributes <- respondent.attributes %>%
 
 # Create thresholds for each category
 skill_thresh = "novice"
-trip_thresh = "1 time a season"
+visit_thresh = "1 time a season"
 confidence_thresh = "Not comfortable at all"
 
 # Filter to respondent IDs above the thresholds
 respondent.id.valid = respondent.attributes %>% 
   filter(., skill != skill_thresh,
-         trip.frequency != trip_thresh,
-         reporting.confidence != confidence_thresh) %>% 
-  pull(., respondent.id)
+         visit_freq != visit_thresh,
+         report_confidence != confidence_thresh) %>% 
+  pull(., respondent_id)
 
 # Make a vector of segment names
 segments <- unique(flowpref.dat$segment.name)
@@ -56,7 +61,7 @@ for(i in 1:length(segments)){
     # Remove NAs and select a specific segment
     filter(!is.na(preference.code) & 
              segment.name == segment_name &
-             respondent.id %in% respondent.id.valid) %>%
+             respondent_id %in% respondent.id.valid) %>%
     
     # calculate the average pref score and PCI2 statistic of each flow bin
     group_by(flow) %>%
@@ -70,10 +75,10 @@ for(i in 1:length(segments)){
   # Plot
   flow_pref_plot <- 
     ggplot() +
-    geom_jitter(data = filter(flowpref.dat, segment.name == segment_name), 
-                aes(x = as.numeric(flow), 
-                    y = preference.code), 
-                size = 1, alpha = 0.3) +
+    # geom_jitter(data = filter(flowpref.dat, segment.name == segment_name), 
+    #             aes(x = as.numeric(flow), 
+    #                 y = preference.code), 
+    #             size = 1, alpha = 0.3) +
     geom_point(data = filter(results, n_obs > 2), 
                aes(x = flow, y = pref.average, size = pci2), 
                color = 'blue') +
@@ -97,7 +102,7 @@ for(i in 1:length(segments)){
   # Export plot
   save_plot(filename = paste0("plots/flow_pref/flow_pref_",
                               segment_name2,
-                              ".png"),
+                              "_av_only.png"),
             plot = flow_pref_plot,
             base_width = 7)
   

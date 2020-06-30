@@ -116,7 +116,7 @@ survey %>%
   select(respondent_id, city, state, zip_code, skill, skill_rapidclass, 
          category, visit_freq, report_confidence) %>% 
   saveRDS(object = .,
-          file = "flow_pref/survey-analysis/respondent-attributes_20200630.RDS")
+          file = "private_data/respondent-attributes_20200630.RDS")
 
 
 ################################################################################
@@ -132,8 +132,10 @@ flowpref.dat <- data.frame()
 for(i in 1:length(reach_codes$code)){
   
   # Identify the reach code
+  # reach name and flow or stage designation
   reach_code = as.character(reach_codes[i, "code"])
   reach_name = as.character(reach_codes[i, "name"])
+  stage_or_flow = as.character(reach_codes[i, "stage_or_flow"])
   
   # Select only respondent id and columns matching reach code
   # And rename all columns by removing reach code prefix
@@ -155,13 +157,21 @@ for(i in 1:length(reach_codes$code)){
     select(respondent_id, craft, starts_with("flow_pref")) %>% 
     melt(., value.name = "preference", variable.name = "flow", 
          id.vars = c("respondent_id", "craft")) %>% 
-    mutate(flow = as.numeric(str_replace_all(flow, "flow_pref_", "")),
-           preference.code = case_when(preference == "Unacceptable" ~ -2,
+    mutate(preference.code = case_when(preference == "Unacceptable" ~ -2,
                                        str_detect(preference, c("Moderately","Unacceptable")) == 1 ~ -1,
                                        preference == "Marginal" ~ 0,
                                        preference == "Moderately Acceptable" ~ 1,
                                        preference == "Acceptable" ~ 2), 
            segment.name = reach_name)
+  
+  # Convert values to flow or stage
+  if(stage_or_flow == "flow"){
+    tmp.melt <- tmp.melt %>% 
+      mutate(flow = as.numeric(str_replace_all(flow, "flow_pref_", "")))
+  } else {
+    tmp.melt <- tmp.melt %>% 
+      mutate(flow = as.numeric(str_replace_all(flow, "flow_pref_", "")) / 100)
+  }
   
   # Bind to other data
   flowpref.dat <- bind_rows(flowpref.dat, tmp.melt)
@@ -170,6 +180,6 @@ for(i in 1:length(reach_codes$code)){
 
 # Export the flow preference data
 saveRDS(object = flowpref.dat,
-        file = "flow_pref/survey-analysis/flow-pref-data_20200630.RDS")
+        file = "private_data/flow-pref-data_20200630.RDS")
 
 
