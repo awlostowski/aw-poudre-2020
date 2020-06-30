@@ -1,3 +1,11 @@
+
+###############################################################################
+#
+#       this script has been replaced by poudre_survey_clean_format.R
+#
+###############################################################################
+
+
 remove(list = ls()) # clear all workspace variables
 cat("\014")         # clear command line
 

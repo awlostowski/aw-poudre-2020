@@ -8,6 +8,8 @@
 library(tidyverse)
 library(reshape2)
 
+################################################################################
+# Poudre Survey respondent attributes
 
 # Import raw survey data and headers
 headers <- unlist(strsplit(readLines("private_data/poudre_survey_headers.csv"), 
@@ -108,7 +110,8 @@ survey <- survey %>%
                                        as.integer(trip_length) == 4 ~ 35,
                                        as.integer(trip_length) == 5 ~ 50))
 
-# Summarize the survey
+# Export the respondent attributes
+# Variables for now are similar to those exported by Adam in earlier version
 
 
 ################################################################################
@@ -160,5 +163,8 @@ for(i in 1:length(reach_codes$code)){
   
 }
 
+# Export the flow preference data
+saveRDS(object = flowpref.dat,
+        file = "flow_pref/survey-analysis/flow-pref-data_20200630.RDS")
 
 
