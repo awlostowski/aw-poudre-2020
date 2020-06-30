@@ -112,6 +112,11 @@ survey <- survey %>%
 
 # Export the respondent attributes
 # Variables for now are similar to those exported by Adam in earlier version
+survey %>% 
+  select(respondent_id, city, state, zip_code, skill, skill_rapidclass, 
+         category, visit_freq, report_confidence) %>% 
+  saveRDS(object = .,
+          file = "flow_pref/survey-analysis/respondent-attributes_20200630.RDS")
 
 
 ################################################################################
