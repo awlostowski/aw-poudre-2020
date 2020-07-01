@@ -1,3 +1,11 @@
+
+###############################################################################
+#
+#       this script has been replaced by poudre_survey_clean_format.R
+#
+###############################################################################
+
+
 remove(list = ls()) # clear all workspace variables
 cat("\014")         # clear command line
 
@@ -25,7 +33,7 @@ data <- read.csv(here::here("data","survey_monkey","poudre-survey-20200525.csv")
 skill_level <- data[2:nrow(data), 11:14] %>%
   
   # appoint more intuitive column names
-  rename(novice = "How.would.you.describe.yourÂ.skill.level.on.the.river.",
+  rename(novice = "How.would.you.describe.yourÂ.skill.level.on.the.river.", # code breaks here for Keith (diff parsing on Mac vs. PC)
          intermediate = X,
          advanced = X.1,
          expert = X.2) %>%
