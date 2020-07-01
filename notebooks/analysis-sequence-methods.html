@@ -1479,6 +1479,15 @@ window.onload = function() {
   PagedTableDoc.initAll();
 };
 </script>
+<script>$(document).ready(function(){
+    if (typeof $('[data-toggle="tooltip"]').tooltip === 'function') {
+        $('[data-toggle="tooltip"]').tooltip();
+    }
+    if ($('[data-toggle="popover"]').popover === 'function') {
+        $('[data-toggle="popover"]').popover();
+    }
+});
+</script>
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
@@ -1640,8 +1649,13 @@ summary {
 <div id="data-collection" class="section level1">
 <h1>Data Collection</h1>
 <ul>
-<li>Flow preference surveys are designed to gauge user-percieved quality of whitewater conditions as a function of flow.</li>
-<li>Surveys ask respondents to associate a preference ranking with specified flow rates.</li>
+<li>Flow preference surveys are designed to gauge user-percieved quality of whitewater conditions as a function of flow on specific river segments.</li>
+<li>The survey ask respondents to rate the acceptabilty of specified flow levels. The prompt as stated in the suvey is:</li>
+</ul>
+<blockquote>
+<p>With your preferred craft-type in mind, please consider all the flow-dependent characteristics that contribute to a high quality experience (e.g., depth, challenge, safety, availability of surfing or other play areas, aesthetics, and length of run). For comparative purposes, please rate the acceptability of each flow level.</p>
+</blockquote>
+<ul>
 <li>[Graphic illustrating survey question with boxes and check marks]</li>
 <li>Surveys are distributed by Survey Monkey</li>
 <li>As of MM/DD we have recieved N responses</li>
@@ -1654,44 +1668,503 @@ summary {
 <div id="data-processing" class="section level1">
 <h1>Data Processing</h1>
 <ul>
-<li>The data exported from Survey monkey are not optimally formatted for analysis.</li>
-<li>tidy</li>
-<li>Numericize preference response</li>
+<li>The data exported from Survey Monkey are not optimally formatted for analysis. The raw data must be cleaned and reorganized into a “tidy” format, and flow preference data must be numerically coded. This process is done in <code>flow_pref/survey-analysis/tidy-response-data.R</code>.</li>
 </ul>
-<pre class="r"><code>string_response = c(&quot;Acceptable&quot;,
-                   &quot;Somewhat Acceptable&quot;,
-                   &quot;Marginal&quot;,
-                   &quot;Somewhat Unacceptable&quot;,
-                   &quot;Unacceptable&quot;)
-
-numeric_response = c(2,1,0,-1,-2)
-
-conversion_table &lt;- data.frame(string_response,
-                               numeric_response)
-
-head(conversion_table, n = 6)</code></pre>
-<div data-pagedtable="false">
-<script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["string_response"],"name":[1],"type":["fctr"],"align":["left"]},{"label":["numeric_response"],"name":[2],"type":["dbl"],"align":["right"]}],"data":[{"1":"Acceptable","2":"2","_rn_":"1"},{"1":"Somewhat Acceptable","2":"1","_rn_":"2"},{"1":"Marginal","2":"0","_rn_":"3"},{"1":"Somewhat Unacceptable","2":"-1","_rn_":"4"},{"1":"Unacceptable","2":"-2","_rn_":"5"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+<div id="numericize-flow-preference-data" class="section level3">
+<h3>Numericize flow preference data</h3>
 <ul>
-<li>Respondent attributes, such as home address, percieved level of experience, Respondent attributes:</li>
+<li>Preference response data are converted to a numeric variable class, with values ranging from -2 to 2 (Table 1). This allows us to easily quantitatively analyze flow preferences.
+<table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<caption>
+Table 1. Numeric codes for flow preference responses
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+Preference rank (character)
+</th>
+<th style="text-align:right;">
+Numeric code
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Acceptable
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Somewhat Acceptable
+</td>
+<td style="text-align:right;">
+1
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Marginal
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Somewhat Unacceptable
+</td>
+<td style="text-align:right;">
+-1
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Unacceptable
+</td>
+<td style="text-align:right;">
+-2
+</td>
+</tr>
+</tbody>
+</table></li>
 </ul>
-<pre class="r"><code>head(respondent.attributes, n = 100)</code></pre>
-<div data-pagedtable="false">
-<script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["respondent.id"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["start.date"],"name":[2],"type":["fctr"],"align":["left"]},{"label":["end.date"],"name":[3],"type":["fctr"],"align":["left"]},{"label":["ip.address"],"name":[4],"type":["lgl"],"align":["right"]},{"label":["name"],"name":[5],"type":["lgl"],"align":["right"]},{"label":["email"],"name":[6],"type":["lgl"],"align":["right"]},{"label":["phone"],"name":[7],"type":["fctr"],"align":["left"]},{"label":["street.address"],"name":[8],"type":["fctr"],"align":["left"]},{"label":["city"],"name":[9],"type":["fctr"],"align":["left"]},{"label":["state"],"name":[10],"type":["fctr"],"align":["left"]},{"label":["zip.code"],"name":[11],"type":["fctr"],"align":["left"]},{"label":["skill.class"],"name":[12],"type":["fctr"],"align":["left"]},{"label":["skill.novice"],"name":[13],"type":["lgl"],"align":["right"]},{"label":["skill.intermediate"],"name":[14],"type":["lgl"],"align":["right"]},{"label":["skill.advanced"],"name":[15],"type":["lgl"],"align":["right"]},{"label":["skill.expert"],"name":[16],"type":["lgl"],"align":["right"]},{"label":["user.type.private"],"name":[17],"type":["lgl"],"align":["right"]},{"label":["user.type.guide"],"name":[18],"type":["lgl"],"align":["right"]},{"label":["user.type.customer"],"name":[19],"type":["lgl"],"align":["right"]},{"label":["trip.frequency"],"name":[20],"type":["fctr"],"align":["left"]},{"label":["reporting.confidence"],"name":[21],"type":["fctr"],"align":["left"]}],"data":[{"1":"11632567238","2":"5/25/2020 0:17","3":"5/25/2020 0:18","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Boulder","10":"CO","11":"80303","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"TRUE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"2"},{"1":"11631110440","2":"5/24/2020 2:32","3":"5/24/2020 3:02","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Lakewood","10":"Co","11":"80228","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"3"},{"1":"11628608029","2":"5/22/2020 19:30","3":"5/22/2020 19:32","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80521","12":"Class III","13":"TRUE","14":"FALSE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"4"},{"1":"11628412846","2":"5/22/2020 18:23","3":"5/22/2020 18:25","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Marietta","10":"GA","11":"30067","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"5"},{"1":"11627571474","2":"5/22/2020 14:03","3":"5/22/2020 14:16","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Bellvue","10":"CO","11":"80512","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"6"},{"1":"11623791173","2":"5/21/2020 13:02","3":"5/21/2020 13:04","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Longmont","10":"CO","11":"80501","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"7"},{"1":"11622678197","2":"5/21/2020 3:04","3":"5/21/2020 3:11","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"neutral","_rn_":"8"},{"1":"11620927094","2":"5/20/2020 16:53","3":"5/20/2020 16:55","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Wellington","10":"CO","11":"80549","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"neutral","_rn_":"9"},{"1":"11618691958","2":"5/20/2020 2:14","3":"5/20/2020 2:27","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80525","12":"Class V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"10"},{"1":"11618383286","2":"5/19/2020 23:58","3":"5/20/2020 1:15","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class III","13":"TRUE","14":"FALSE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat uncomfortable","_rn_":"11"},{"1":"11617775355","2":"5/19/2020 20:41","3":"5/19/2020 20:46","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80526","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"12"},{"1":"11617510381","2":"5/19/2020 19:25","3":"5/24/2020 23:29","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80525-3127","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"somewhat comfortable","_rn_":"13"},{"1":"11617234613","2":"5/19/2020 18:07","3":"5/21/2020 3:51","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"FORT COLLINS","10":"Colorado","11":"80524","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"14"},{"1":"11616667157","2":"5/19/2020 15:40","3":"5/19/2020 16:22","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Berthoud","10":"CO","11":"80513","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"15"},{"1":"11616515520","2":"5/19/2020 15:07","3":"5/19/2020 15:18","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80521","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"16"},{"1":"11616323000","2":"5/19/2020 14:22","3":"5/19/2020 14:28","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80525","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"neutral","_rn_":"17"},{"1":"11616260929","2":"5/19/2020 14:07","3":"5/19/2020 14:09","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"ft collins","10":"CO","11":"80521","12":"Class III/IV","13":"TRUE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"somewhat uncomfortable","_rn_":"18"},{"1":"11616228829","2":"5/19/2020 13:59","3":"5/19/2020 14:01","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Loveland","10":"Colorado","11":"80537","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"19"},{"1":"11616126437","2":"5/19/2020 13:33","3":"5/19/2020 13:34","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"20"},{"1":"11616055385","2":"5/19/2020 13:12","3":"5/19/2020 13:47","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Boulder","10":"Co","11":"80302","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"21"},{"1":"11615808654","2":"5/19/2020 12:00","3":"5/19/2020 12:10","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"longmont","10":"CO","11":"80501","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat uncomfortable","_rn_":"22"},{"1":"11615770948","2":"5/19/2020 11:47","3":"5/19/2020 11:49","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Bellvue","10":"Colorado","11":"80512","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"23"},{"1":"11614956187","2":"5/19/2020 5:02","3":"5/19/2020 5:21","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort collins","10":"Colorado","11":"80528","12":"Class IV/V","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"50+ times a season","21":"somewhat comfortable","_rn_":"24"},{"1":"11614753060","2":"5/19/2020 3:00","3":"5/19/2020 3:02","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Boulder","10":"CO","11":"80304","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"neutral","_rn_":"25"},{"1":"11614736521","2":"5/19/2020 2:50","3":"5/19/2020 2:54","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80524","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"26"},{"1":"11614506861","2":"5/19/2020 0:51","3":"5/19/2020 1:33","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80521","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"27"},{"1":"11614506226","2":"5/19/2020 0:51","3":"5/19/2020 0:54","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Lafayette","10":"CO","11":"80026","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"28"},{"1":"11614481400","2":"5/19/2020 0:40","3":"5/19/2020 0:42","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat uncomfortable","_rn_":"29"},{"1":"11614230118","2":"5/18/2020 22:56","3":"5/18/2020 23:06","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80526","12":"Class II","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"neutral","_rn_":"30"},{"1":"11614187229","2":"5/18/2020 22:50","3":"5/18/2020 22:52","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort collins","10":"CO","11":"80524","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"FALSE","18":"FALSE","19":"TRUE","20":"20+ times a season","21":"somewhat comfortable","_rn_":"31"},{"1":"11614142436","2":"5/18/2020 22:35","3":"5/18/2020 22:40","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80521","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"32"},{"1":"11614141873","2":"5/18/2020 22:35","3":"5/18/2020 22:52","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"somewhat uncomfortable","_rn_":"33"},{"1":"11614126043","2":"5/18/2020 22:29","3":"5/18/2020 22:31","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80526","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"neutral","_rn_":"34"},{"1":"11614062949","2":"5/18/2020 22:08","3":"5/18/2020 22:10","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"boulder","10":"co","11":"80303","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"35"},{"1":"11614034409","2":"5/18/2020 21:58","3":"5/18/2020 22:03","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Bellvue","10":"CO","11":"80512","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"neutral","_rn_":"36"},{"1":"11613976655","2":"5/18/2020 21:39","3":"5/18/2020 21:40","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80521","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"37"},{"1":"11613941056","2":"5/18/2020 21:27","3":"5/18/2020 21:29","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80521","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"38"},{"1":"11613860693","2":"5/18/2020 21:01","3":"5/18/2020 21:03","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Windsor","10":"CO","11":"80550","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat uncomfortable","_rn_":"39"},{"1":"11613842988","2":"5/18/2020 20:56","3":"5/18/2020 20:58","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80521","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"40"},{"1":"11613837279","2":"5/18/2020 20:54","3":"5/18/2020 21:39","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort collins","10":"CO","11":"80526","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"41"},{"1":"11613825313","2":"5/18/2020 20:51","3":"5/19/2020 12:06","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class III","13":"TRUE","14":"FALSE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"1 time a season","21":"Not comfortable at all","_rn_":"42"},{"1":"11613797114","2":"5/18/2020 20:42","3":"5/18/2020 20:51","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Denver","10":"CO","11":"80209","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"FALSE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"43"},{"1":"11613787096","2":"5/18/2020 20:40","3":"5/18/2020 20:41","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"44"},{"1":"11613766138","2":"5/18/2020 20:33","3":"5/18/2020 20:35","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80526","12":"Class III","13":"TRUE","14":"FALSE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"Not comfortable at all","_rn_":"45"},{"1":"11613751084","2":"5/18/2020 20:28","3":"5/18/2020 20:41","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"new castle","10":"co","11":"81647","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"TRUE","20":"1 time a season","21":"somewhat uncomfortable","_rn_":"46"},{"1":"11613746547","2":"5/18/2020 20:27","3":"5/18/2020 20:31","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class IV","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"47"},{"1":"11613719367","2":"5/18/2020 20:18","3":"5/18/2020 20:20","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"FORT COLLINS","10":"CO","11":"80526","12":"Class III","13":"TRUE","14":"FALSE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"neutral","_rn_":"48"},{"1":"11613697928","2":"5/18/2020 20:10","3":"5/18/2020 20:45","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"laramie","10":"wy","11":"82070","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"49"},{"1":"11613695902","2":"5/18/2020 20:11","3":"5/18/2020 20:15","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80521","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"TRUE","20":"2-5 times a season","21":"somewhat uncomfortable","_rn_":"50"},{"1":"11613692992","2":"5/18/2020 20:10","3":"5/18/2020 20:15","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"fort collins","10":"colorado","11":"80526","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"51"},{"1":"11613692927","2":"5/18/2020 20:10","3":"5/18/2020 20:50","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80526","12":"Class IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"52"},{"1":"11613690306","2":"5/18/2020 20:09","3":"5/18/2020 20:11","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Bend","10":"OR","11":"97701-6403","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"53"},{"1":"11613679587","2":"5/18/2020 20:06","3":"5/18/2020 20:08","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80526","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"FALSE","18":"TRUE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"54"},{"1":"11613679572","2":"5/18/2020 20:06","3":"5/18/2020 20:28","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80525","12":"Class IV","13":"FALSE","14":"TRUE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"somewhat comfortable","_rn_":"55"},{"1":"11610411153","2":"5/17/2020 21:25","3":"5/17/2020 21:31","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80528","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"neutral","_rn_":"56"},{"1":"11608810290","2":"5/16/2020 22:21","3":"5/16/2020 22:27","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80524","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"FALSE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"57"},{"1":"11608592593","2":"5/16/2020 19:31","3":"5/17/2020 3:31","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Lakewood","10":"CO","11":"80226","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"very comfortable","_rn_":"58"},{"1":"11608563604","2":"5/16/2020 19:10","3":"5/16/2020 19:34","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Lafayette","10":"CO","11":"80026","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"59"},{"1":"11607111860","2":"5/16/2020 2:38","3":"5/16/2020 2:47","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Lafayette","10":"CO","11":"80026","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat comfortable","_rn_":"60"},{"1":"11603300270","2":"5/15/2020 2:46","3":"5/15/2020 2:56","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80526","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"61"},{"1":"11601122814","2":"5/14/2020 15:27","3":"5/14/2020 15:49","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Golden","10":"Colorado","11":"20401","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"62"},{"1":"11600862248","2":"5/14/2020 14:24","3":"5/14/2020 14:39","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Golden","10":"CO","11":"80401","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"very comfortable","_rn_":"63"},{"1":"11599811011","2":"5/14/2020 8:30","3":"5/14/2020 8:38","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Loveland","10":"Colorado","11":"80538","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"64"},{"1":"11599244591","2":"5/14/2020 3:26","3":"5/17/2020 4:27","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80521","12":"Class V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"65"},{"1":"11599153024","2":"5/14/2020 2:38","3":"5/14/2020 2:51","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Aurora","10":"Colorado","11":"80013","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"FALSE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"66"},{"1":"11598211871","2":"5/13/2020 20:52","3":"5/13/2020 20:54","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Swannanoa","10":"North Carolina","11":"28778","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"neutral","_rn_":"67"},{"1":"11598077699","2":"5/13/2020 20:13","3":"5/13/2020 20:46","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80526","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"68"},{"1":"11597779795","2":"5/13/2020 18:55","3":"5/13/2020 19:13","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Laramie","10":"Wyoming","11":"82072","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"69"},{"1":"11597542467","2":"5/13/2020 17:54","3":"5/13/2020 18:05","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80526","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"70"},{"1":"11596928659","2":"5/13/2020 15:26","3":"5/13/2020 15:29","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Co","11":"80524","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"FALSE","18":"TRUE","19":"FALSE","20":"20+ times a season","21":"somewhat comfortable","_rn_":"71"},{"1":"11596693651","2":"5/13/2020 14:34","3":"5/13/2020 14:36","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Loveland","10":"CO","11":"80538","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"FALSE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"72"},{"1":"11595189255","2":"5/13/2020 5:50","3":"5/13/2020 5:56","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"Not comfortable at all","_rn_":"73"},{"1":"11594967963","2":"5/13/2020 3:34","3":"5/13/2020 3:36","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Summerville","10":"SC","11":"29485","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"neutral","_rn_":"74"},{"1":"11593748216","2":"5/12/2020 20:17","3":"5/12/2020 20:25","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"lakewood","10":"co","11":"80226","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"neutral","_rn_":"75"},{"1":"11593526614","2":"5/12/2020 19:16","3":"5/12/2020 19:20","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80521","12":"Class IV/V","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"somewhat uncomfortable","_rn_":"76"},{"1":"11592921822","2":"5/12/2020 16:47","3":"5/12/2020 17:05","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80521","12":"Class IV","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"FALSE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"77"},{"1":"11592907463","2":"5/12/2020 16:44","3":"5/12/2020 16:45","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Bolder","10":"CO","11":"80303","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"5-20 times a season","21":"neutral","_rn_":"78"},{"1":"11592878486","2":"5/12/2020 16:36","3":"5/12/2020 19:22","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Laporte","10":"Colorado","11":"80535","12":"Class IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"somewhat uncomfortable","_rn_":"79"},{"1":"11592379582","2":"5/12/2020 14:47","3":"5/12/2020 15:06","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80525","12":"Class III/IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"somewhat comfortable","_rn_":"80"},{"1":"11592002032","2":"5/12/2020 13:19","3":"5/12/2020 13:23","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Ft collins","10":"Co","11":"80526","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"somewhat comfortable","_rn_":"81"},{"1":"11590841568","2":"5/12/2020 7:00","3":"5/12/2020 7:38","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Bend","10":"Oregon","11":"97701","12":"Class III","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"neutral","_rn_":"82"},{"1":"11590535022","2":"5/12/2020 4:15","3":"5/12/2020 4:29","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Steamboat Springs","10":"CO","11":"80487","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"neutral","_rn_":"83"},{"1":"11590137362","2":"5/12/2020 1:13","3":"5/12/2020 1:15","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Laramie","10":"Wy","11":"82072","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"84"},{"1":"11590054490","2":"5/12/2020 0:42","3":"5/12/2020 1:02","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort collins","10":"Colorado","11":"80521","12":"Class V","13":"FALSE","14":"FALSE","15":"FALSE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"85"},{"1":"11589890216","2":"5/11/2020 23:47","3":"5/12/2020 0:01","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Centennial","10":"Colorado","11":"80112","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"TRUE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"86"},{"1":"11589616841","2":"5/11/2020 22:33","3":"5/15/2020 4:02","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80526","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"87"},{"1":"11589480910","2":"5/11/2020 21:58","3":"5/11/2020 22:12","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Wellington","10":"Colorado","11":"80549","12":"Class V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"50+ times a season","21":"very comfortable","_rn_":"88"},{"1":"11589041422","2":"5/11/2020 20:08","3":"5/11/2020 20:15","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Wheat Ridge","10":"Colorado","11":"80033","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"TRUE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"89"},{"1":"11588894918","2":"5/11/2020 19:31","3":"5/11/2020 19:45","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80526","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"FALSE","18":"TRUE","19":"FALSE","20":"50+ times a season","21":"somewhat comfortable","_rn_":"90"},{"1":"11588757354","2":"5/11/2020 18:12","3":"5/12/2020 16:15","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80522","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"91"},{"1":"11588681336","2":"5/11/2020 18:16","3":"5/11/2020 18:38","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"FORT COLLINS","10":"CO","11":"80524","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"92"},{"1":"11588661579","2":"5/11/2020 18:30","3":"5/11/2020 18:55","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Windsor","10":"Colorado","11":"80550","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"neutral","_rn_":"93"},{"1":"11588597093","2":"5/11/2020 18:12","3":"5/11/2020 18:24","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Golden","10":"Colorado","11":"80403","12":"Class IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"94"},{"1":"11588494672","2":"5/11/2020 17:45","3":"5/11/2020 18:08","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"Colorado","11":"80521","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"95"},{"1":"11588435169","2":"5/11/2020 17:28","3":"5/11/2020 17:37","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"erie","10":"co","11":"80516","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"2-5 times a season","21":"somewhat comfortable","_rn_":"96"},{"1":"11588421042","2":"5/11/2020 17:26","3":"5/11/2020 17:56","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80524","12":"Class IV","13":"FALSE","14":"TRUE","15":"FALSE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"97"},{"1":"11588306180","2":"5/11/2020 16:56","3":"5/11/2020 17:02","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Boulder","10":"CO","11":"80304","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"neutral","_rn_":"98"},{"1":"11588165854","2":"5/11/2020 16:24","3":"5/11/2020 16:30","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Loveland","10":"Colorado","11":"80538","12":"Class III/IV","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"99"},{"1":"11587874606","2":"5/11/2020 15:16","3":"5/11/2020 15:51","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Fort Collins","10":"CO","11":"80525","12":"Class IV/V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"20+ times a season","21":"very comfortable","_rn_":"100"},{"1":"11587654445","2":"5/11/2020 14:22","3":"5/11/2020 14:24","4":"NA","5":"NA","6":"NA","7":"","8":"","9":"Englewood","10":"Colorado","11":"80113","12":"Class V","13":"FALSE","14":"FALSE","15":"TRUE","16":"FALSE","17":"TRUE","18":"FALSE","19":"FALSE","20":"1 time a season","21":"somewhat comfortable","_rn_":"101"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
 </div>
+<div id="respondent-attributes-data" class="section level3">
+<h3>Respondent attributes data</h3>
 <ul>
-<li>Flow preference</li>
+<li>Respondent attribute data include descriptive characteristics for each respondent. Attributes include a unique ID code, home location data, skill classification, seasonal trip frequency, and confidence assessing flow conditions (Table 2). Several other respondent attributes are also collected, but not shown in Table 2.
+<table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<caption>
+Table 2. Respondent attributes data
+</caption>
+<thead>
+<tr>
+<th style="text-align:right;">
+ID
+</th>
+<th style="text-align:left;">
+State
+</th>
+<th style="text-align:left;">
+Zip
+</th>
+<th style="text-align:left;">
+Skill class
+</th>
+<th style="text-align:left;">
+Trip frequency
+</th>
+<th style="text-align:left;">
+Reporting confidence
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+11632567238
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80303
+</td>
+<td style="text-align:left;">
+Class IV
+</td>
+<td style="text-align:left;">
+5-20 times a season
+</td>
+<td style="text-align:left;">
+very comfortable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11631110440
+</td>
+<td style="text-align:left;">
+Co
+</td>
+<td style="text-align:left;">
+80228
+</td>
+<td style="text-align:left;">
+Class IV/V
+</td>
+<td style="text-align:left;">
+2-5 times a season
+</td>
+<td style="text-align:left;">
+somewhat comfortable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11628608029
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80521
+</td>
+<td style="text-align:left;">
+Class III
+</td>
+<td style="text-align:left;">
+2-5 times a season
+</td>
+<td style="text-align:left;">
+somewhat comfortable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11628412846
+</td>
+<td style="text-align:left;">
+GA
+</td>
+<td style="text-align:left;">
+30067
+</td>
+<td style="text-align:left;">
+Class IV/V
+</td>
+<td style="text-align:left;">
+2-5 times a season
+</td>
+<td style="text-align:left;">
+somewhat comfortable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11627571474
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80512
+</td>
+<td style="text-align:left;">
+Class V
+</td>
+<td style="text-align:left;">
+20+ times a season
+</td>
+<td style="text-align:left;">
+very comfortable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11623791173
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80501
+</td>
+<td style="text-align:left;">
+Class V
+</td>
+<td style="text-align:left;">
+50+ times a season
+</td>
+<td style="text-align:left;">
+very comfortable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11622678197
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80524
+</td>
+<td style="text-align:left;">
+Class III/IV
+</td>
+<td style="text-align:left;">
+20+ times a season
+</td>
+<td style="text-align:left;">
+neutral
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11620927094
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80549
+</td>
+<td style="text-align:left;">
+Class IV
+</td>
+<td style="text-align:left;">
+5-20 times a season
+</td>
+<td style="text-align:left;">
+neutral
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11618691958
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80525
+</td>
+<td style="text-align:left;">
+Class V
+</td>
+<td style="text-align:left;">
+20+ times a season
+</td>
+<td style="text-align:left;">
+very comfortable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11618383286
+</td>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+80524
+</td>
+<td style="text-align:left;">
+Class III
+</td>
+<td style="text-align:left;">
+2-5 times a season
+</td>
+<td style="text-align:left;">
+somewhat uncomfortable
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flow-preference-data">Flow preference data</h3></li>
+<li>Flow preference data include respondent ID, river segment, flow, and preference rankings (Table 3). This data set can be easily sorted and filtered and respondent attributes can be cross referenced by respondend ID. Preffered craft for the
+<table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<caption>
+Table 3. Example flow preference data
+</caption>
+<thead>
+<tr>
+<th style="text-align:right;">
+ID
+</th>
+<th style="text-align:left;">
+River Segment
+</th>
+<th style="text-align:left;">
+Flow Rate (cfs)
+</th>
+<th style="text-align:left;">
+Preference Ranking (char)
+</th>
+<th style="text-align:right;">
+Preference Ranking (numeric)
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+100
+</td>
+<td style="text-align:left;">
+Unacceptable
+</td>
+<td style="text-align:right;">
+-2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+200
+</td>
+<td style="text-align:left;">
+Unacceptable
+</td>
+<td style="text-align:right;">
+-2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+300
+</td>
+<td style="text-align:left;">
+ModeratelyÂ Unacceptable
+</td>
+<td style="text-align:right;">
+-1
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+400
+</td>
+<td style="text-align:left;">
+ModeratelyÂ Unacceptable
+</td>
+<td style="text-align:right;">
+-1
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+500
+</td>
+<td style="text-align:left;">
+ModeratelyÂ Unacceptable
+</td>
+<td style="text-align:right;">
+-1
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+600
+</td>
+<td style="text-align:left;">
+Marginal
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+700
+</td>
+<td style="text-align:left;">
+Marginal
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+800
+</td>
+<td style="text-align:left;">
+Marginal
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+900
+</td>
+<td style="text-align:left;">
+Moderately Acceptable
+</td>
+<td style="text-align:right;">
+-1
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+11587874606
+</td>
+<td style="text-align:left;">
+Filter Plant
+</td>
+<td style="text-align:left;">
+1000
+</td>
+<td style="text-align:left;">
+Moderately Acceptable
+</td>
+<td style="text-align:right;">
+-1
+</td>
+</tr>
+</tbody>
+</table></li>
 </ul>
-<pre class="r"><code>head(flowpref.dat, n = 100)</code></pre>
-<div data-pagedtable="false">
-<script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["respondent.id"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["segment.name"],"name":[2],"type":["chr"],"align":["left"]},{"label":["craft.kayak"],"name":[3],"type":["lgl"],"align":["right"]},{"label":["craft.raft.shredder"],"name":[4],"type":["lgl"],"align":["right"]},{"label":["craft.opencanoe"],"name":[5],"type":["lgl"],"align":["right"]},{"label":["craft.packraft.inflatecayak.canoe"],"name":[6],"type":["lgl"],"align":["right"]},{"label":["craft.sup"],"name":[7],"type":["lgl"],"align":["right"]},{"label":["craft.other"],"name":[8],"type":["fctr"],"align":["left"]},{"label":["flow"],"name":[9],"type":["chr"],"align":["left"]},{"label":["preference"],"name":[10],"type":["chr"],"align":["left"]},{"label":["preference.code"],"name":[11],"type":["dbl"],"align":["right"]}],"data":[{"1":"11632567238","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"1"},{"1":"11631110440","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"2"},{"1":"11628608029","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"3"},{"1":"11628412846","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"4"},{"1":"11627571474","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"5"},{"1":"11623791173","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"6"},{"1":"11622678197","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"7"},{"1":"11620927094","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"8"},{"1":"11618691958","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"9"},{"1":"11618383286","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"TRUE","8":"","9":"100","10":"","11":"NA","_rn_":"10"},{"1":"11617775355","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"11"},{"1":"11617510381","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"12"},{"1":"11617234613","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"TRUE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"13"},{"1":"11616667157","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"14"},{"1":"11616515520","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"15"},{"1":"11616323000","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"16"},{"1":"11616260929","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"17"},{"1":"11616228829","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"18"},{"1":"11616126437","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"19"},{"1":"11616055385","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"20"},{"1":"11615808654","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"21"},{"1":"11615770948","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"22"},{"1":"11614956187","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"23"},{"1":"11614753060","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"24"},{"1":"11614736521","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"25"},{"1":"11614506861","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"26"},{"1":"11614506226","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"27"},{"1":"11614481400","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"28"},{"1":"11614230118","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"29"},{"1":"11614187229","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"30"},{"1":"11614142436","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"31"},{"1":"11614141873","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"32"},{"1":"11614126043","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"33"},{"1":"11614062949","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"34"},{"1":"11614034409","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"35"},{"1":"11613976655","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"36"},{"1":"11613941056","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"37"},{"1":"11613860693","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"38"},{"1":"11613842988","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"39"},{"1":"11613837279","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"40"},{"1":"11613825313","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"41"},{"1":"11613797114","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"42"},{"1":"11613787096","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"43"},{"1":"11613766138","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"44"},{"1":"11613751084","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"45"},{"1":"11613746547","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"TRUE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"46"},{"1":"11613719367","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"47"},{"1":"11613697928","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"48"},{"1":"11613695902","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"49"},{"1":"11613692992","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"50"},{"1":"11613692927","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"51"},{"1":"11613690306","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"52"},{"1":"11613679587","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"53"},{"1":"11613679572","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"54"},{"1":"11610411153","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"55"},{"1":"11608810290","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"56"},{"1":"11608592593","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"57"},{"1":"11608563604","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"58"},{"1":"11607111860","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"59"},{"1":"11603300270","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"60"},{"1":"11601122814","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"61"},{"1":"11600862248","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"62"},{"1":"11599811011","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"63"},{"1":"11599244591","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Marginal","11":"0","_rn_":"64"},{"1":"11599153024","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"65"},{"1":"11598211871","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"66"},{"1":"11598077699","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"67"},{"1":"11597779795","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"68"},{"1":"11597542467","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"69"},{"1":"11596928659","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"70"},{"1":"11596693651","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"71"},{"1":"11595189255","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"72"},{"1":"11594967963","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"73"},{"1":"11593748216","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"74"},{"1":"11593526614","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"75"},{"1":"11592921822","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"76"},{"1":"11592907463","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"77"},{"1":"11592878486","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"78"},{"1":"11592379582","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"79"},{"1":"11592002032","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"80"},{"1":"11590841568","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"TRUE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"81"},{"1":"11590535022","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"82"},{"1":"11590137362","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"83"},{"1":"11590054490","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"84"},{"1":"11589890216","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"85"},{"1":"11589616841","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"86"},{"1":"11589480910","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"Kayak freestyle","9":"100","10":"","11":"NA","_rn_":"87"},{"1":"11589041422","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"88"},{"1":"11588894918","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"TRUE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"89"},{"1":"11588757354","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"90"},{"1":"11588681336","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"91"},{"1":"11588661579","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"92"},{"1":"11588597093","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"93"},{"1":"11588494672","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"94"},{"1":"11588435169","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"95"},{"1":"11588421042","2":"Whitewater Park","3":"FALSE","4":"TRUE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"96"},{"1":"11588306180","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"97"},{"1":"11588165854","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"TRUE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Moderately Acceptable","11":"1","_rn_":"98"},{"1":"11587874606","2":"Whitewater Park","3":"TRUE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"Unacceptable","11":"-2","_rn_":"99"},{"1":"11587654445","2":"Whitewater Park","3":"FALSE","4":"FALSE","5":"FALSE","6":"FALSE","7":"FALSE","8":"","9":"100","10":"","11":"NA","_rn_":"100"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
 </div>
 </div>
 <div id="data-qc" class="section level1">

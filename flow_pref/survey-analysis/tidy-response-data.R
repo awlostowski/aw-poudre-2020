@@ -65,7 +65,7 @@ id_attributes <- data[2:nrow(data), 1:10] %>%
          name = Your.name) %>%
   
   # select and arrange columns columns
-  select(respondent.id,start.date,end.date,ip.address,name)
+  select(respondent.id)
 
 # contact and location information
 # *************************************************************************
@@ -79,7 +79,9 @@ contact_location <- data[2:nrow(data),19:24] %>%
          street.address = Your.Street.Address,
          city = Your.City,
          state = Your.State,
-         zip.code = Your.Zip.Code)
+         zip.code = Your.Zip.Code) %>%
+  
+  select(city, state, zip.code)
 
 # user type - private, commercial guide, or commercial customer
 # *************************************************************************
