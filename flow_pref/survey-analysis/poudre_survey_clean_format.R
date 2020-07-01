@@ -183,3 +183,67 @@ saveRDS(object = flowpref.dat,
         file = "private_data/flow-pref-data_20200630.RDS")
 
 
+################################################################################
+# Econ data
+
+# Function for removing all non-numeric strings but - and .
+char_remove <- function(x) gsub("[^0-9\\.-]", "", x)
+sep_string = "[^0-9\\.]"
+
+# Selecting and formatting only the economic data
+# This ugly bit of code is necessary to get the meaningful data (i.e. $ spent)
+# out of the messy responses that include special characters, strings, etc.
+econ_survey <- select(survey, respondent_id, starts_with("spend")) %>% 
+  mutate_at(vars(starts_with("spend")), 
+            funs(char_remove)) %>%  # remove all non-numeric chars but "." and "-"
+  separate(spend_food, c("spend_food_lo", "spend_food_hi"), 
+           sep = sep_string) %>% # split at all character vectors except "."
+  separate(spend_gas, c("spend_gas_lo", "spend_gas_hi"), 
+           sep = sep_string) %>% 
+  separate(spend_lodging, c("spend_lodging_lo", "spend_lodging_hi"), 
+           sep = sep_string) %>% 
+  separate(spend_equipment, c("spend_equipment_lo", "spend_equipment_hi"), 
+           sep = sep_string) %>% 
+  separate(spend_clothing, c("spend_clothing_lo", "spend_clothing_hi"), 
+           sep = sep_string) %>%  
+  separate(spend_other, c("spend_other_lo", "spend_other_hi"), 
+           sep = sep_string) %>% 
+  mutate_all(as.numeric) # convert all strings to numeric
+
+# Manually replace some values
+# 11618383286	520 for gas lo (reads 5 to 20 USD)
+# 11585058528	1500.151 for equip lo (should be just 1500)
+# 11614506861	2000020 for equop hi (20,000 over 20 years >> change to 1000 as average)
+# 11590054490 switch 200 to food hi 
+econ_survey <- econ_survey %>% 
+  mutate(spend_gas_lo = case_when(respondent_id == 11618383286 ~ 5,
+                                  TRUE ~ spend_gas_lo),
+         spend_gas_hi = case_when(respondent_id == 11618383286 ~ 20,
+                                  TRUE ~ spend_gas_hi),
+         spend_equipment_lo = case_when(respondent_id == 11585058528 ~ 1500,
+                                    TRUE ~ spend_equipment_lo),
+         spend_equipment_hi = case_when(respondent_id == 11614506861 ~ 1000,
+                                       TRUE ~ spend_equipment_hi),
+         spend_food_hi = case_when(respondent_id == 11590054490 ~ 200,
+                                   TRUE ~ spend_food_hi),
+         spend_other_lo = case_when(respondent_id == 11590054490 ~ 0,
+                                    TRUE ~ spend_other_lo))
+
+# Make means for lo and hi spending
+econ_survey <- econ_survey %>% 
+  rowwise() %>% 
+  mutate_all(as.numeric) %>% 
+  mutate(spend_food = mean(c(spend_food_lo, spend_food_hi), na.rm = T),
+         spend_gas = mean(c(spend_gas_lo, spend_gas_hi), na.rm = T),
+         spend_lodging = mean(c(spend_lodging_lo, spend_lodging_hi), na.rm = T),
+         spend_equipment = mean(c(spend_equipment_lo, spend_equipment_hi), na.rm = T),
+         spend_clothing = mean(c(spend_clothing_lo, spend_clothing_hi), na.rm = T),
+         spend_other = mean(c(spend_other_lo, spend_other_hi), na.rm = T),
+         spend_total = sum(c(spend_food, spend_gas, spend_lodging, 
+                             spend_equipment, spend_clothing, spend_other), 
+                           na.rm = T),
+         spend_total_no_equip = sum(c(spend_food, spend_gas, spend_lodging, 
+                                      spend_clothing, spend_other), 
+                                    na.rm = T)) %>% 
+  select(respondent_id, spend_food:spend_total_no_equip) %>% 
+  ungroup()
