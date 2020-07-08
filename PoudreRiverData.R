@@ -57,7 +57,7 @@ CLAFTCCOgraphMon <- ggplot(data = monthly_discharge1, aes(x = month, y = av_disc
   scale_x_continuous(breaks = seq(1, 12, 1), lim = c(1, 12)) +
   labs(title = "Canyon Gage Monthly Discharge", y="Average discharge (cfs)", x = "Month")
 
-print(CLAFTCCOgraphMon)
+# print(CLAFTCCOgraphMon)
 
 # ANNUAL PLOT
 CLAFTCCOgraphAnn <- ggplot(data = annual_discharge1, aes(x = year, y = av_dischyr1)) +
@@ -65,7 +65,7 @@ CLAFTCCOgraphAnn <- ggplot(data = annual_discharge1, aes(x = year, y = av_dischy
   scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
   labs(title = "Canyon Gage Annual Discharge", y ="Average discharge (cfs)", x = "Year")
 
-print(CLAFTCCOgraphAnn)
+# print(CLAFTCCOgraphAnn)
 
 
 
@@ -98,7 +98,7 @@ CLAFORCOgraphMon <- ggplot(data = monthly_discharge2, aes(x = month, y = av_disc
   scale_x_continuous(breaks = seq(1, 12, 1), lim = c(1, 12)) +
   labs(title = "Fort Collins Monthly Discharge", y ="Average discharge (cfs)", x = "Month")
 
-print(CLAFORCOgraphMon)
+# print(CLAFORCOgraphMon)
 
 # ANNUAL PLOT
 CLAFORCOgraphAnn <- ggplot(data = annual_discharge2, aes(x = year, y = av_dischyr2)) +
@@ -106,7 +106,7 @@ CLAFORCOgraphAnn <- ggplot(data = annual_discharge2, aes(x = year, y = av_dischy
   scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
   labs(title = "Fort Collins Annual Discharge", y ="Average discharge (cfs)", x = "Year")
 
-print(CLAFORCOgraphAnn) 
+# print(CLAFORCOgraphAnn) 
 
 # FEIS CHART into CFS -----------------------------------------------------------------
 FEISValues <- read_excel("Desktop/FEISValues.xlsx")
@@ -130,120 +130,108 @@ FEISValuesUSE <- FEISValues[,-(2:5)]
 # CHANGE IN FLOWS ---------------------------------------------------------------
 
 ## CLAFTCOO
-# MONTHLY CHANGE
+# MONTHLY change
   C_Mon_Discharge1 <- Discharge1 %>% # Create new df to display impacts
   mutate(month = month(Date)) %>%
   group_by(month)
 # Subtract values by month
 C_Mon_Discharge1 <- C_Mon_Discharge1 %>% 
-  mutate(mindischarge_applied = case_when(month == 6 ~ (discharge_cfs-18.48611),
-                                          TRUE ~ as.numeric(discharge_cfs)),
-         maxdischarge_applied = case_when(month == 1 ~ (discharge_cfs-40.658602),
-                                          month == 3 ~ (discharge_cfs-19.516129),
-                                          month == 4 ~ (discharge_cfs-389.888889),
-                                          month == 5 ~ (discharge_cfs-899.368280),
-                                          month == 6 ~ (discharge_cfs-1057.069444),
-                                          month == 7 ~ (discharge_cfs-161.008065),
-                                          month == 8 ~ (discharge_cfs-121.975806),
-                                          month == 10 ~ (discharge_cfs-17.889785),
-                                          month == 12 ~ (discharge_cfs-3.252688),
-                                          TRUE ~ as.numeric(discharge_cfs)),
-         avgdischarge_applied = case_when(month == 4 ~ (discharge_cfs-35.29167),
+  mutate(avgdischarge_applied = case_when(month == 4 ~ (discharge_cfs-35.29167),
                                           month == 5 ~ (discharge_cfs-174.01882),
                                           month == 6 ~ (discharge_cfs-294.09722),
                                           month == 7 ~ (discharge_cfs-84.56989),
                                           month == 8 ~ (discharge_cfs-27.64785),
                                           TRUE ~ as.numeric(discharge_cfs)))
-
 # Calculate mean discharges based on FEIS impacts
   C_monthly_discharge1 <- C_Mon_Discharge1 %>% 
-  summarize(C_av_min_dischm1 = mean(mindischarge_applied),
-            C_av_max_dischm1 = mean(maxdischarge_applied),
-            C_av_avg_dischm1 = mean(avgdischarge_applied))
-# Repeat with ANNUAL CHANGE
+  summarize(C_av_avg_dischm1 = mean(avgdischarge_applied))
+
+# Repeat with ANNUAL change
   C_Ann_Discharge1 <- C_Mon_Discharge1 %>% 
     mutate(year = year(Date)) %>%
     group_by(year)
   C_annual_discharge1 <- C_Ann_Discharge1 %>% 
-    summarize(C_av_min_dischyr1 = mean(mindischarge_applied),
-              C_av_max_dischyr1 = mean(maxdischarge_applied),
-              C_av_avg_dischyr1 = mean(avgdischarge_applied))
+    summarize(C_av_avg_dischyr1 = mean(avgdischarge_applied))
 
-# PLOT only average impacts
-C_CLAFTCCOgraphMon <- ggplot(data = monthly_discharge1, aes(x = month, y = av_dischm1)) + geom_line(color = "darkolivegreen") + geom_point(color = "darkolivegreen") +
-  geom_line(data = C_monthly_discharge1, aes(x = month, y = C_av_avg_dischm1), color = "gold") +
-  geom_point(data = C_monthly_discharge1, aes(x = month, y = C_av_avg_dischm1), color = "gold", shape = 15) + 
+# PLOT average impacts
+# MONTHLY PLOT
+C_CLAFTCCOgraphMon <- ggplot(data = monthly_discharge1, aes(x = month, y = av_dischm1)) + geom_line(color = "salmon2") + geom_point(color = "salmon2") +
+  geom_line(data = C_monthly_discharge1, aes(x = month, y = C_av_avg_dischm1), color = "gray59") +
+  geom_point(data = C_monthly_discharge1, aes(x = month, y = C_av_avg_dischm1), color = "gray59", shape = 15) + 
   scale_x_continuous(breaks = seq(1, 12, 1), lim = c(1, 12)) +
-    labs(title = "Canyon Gage Monthly Discharge with FEIS Impacts", y="Average discharge (cfs)", x = "Month")
+  scale_y_continuous(breaks = seq(0, 1700, 500), lim = c(0, 1700)) +
+    labs(title = "Canyon Gage Monthly Discharge", y="Average discharge (cfs)", x = "Month")
 
 print(C_CLAFTCCOgraphMon)
 
-C_CLAFTCCOgraphAnn <- ggplot(data = annual_discharge1, aes(x = year, y = av_dischyr1)) + geom_line(color = "darkolivegreen") + geom_point(color = "darkolivegreen") +
-  geom_line(data = C_annual_discharge1, aes(x = year, y = C_av_avg_dischyr1), color = "gold") +
-  geom_point(data = C_annual_discharge1, aes(x = year, y = C_av_avg_dischyr1), color = "gold", shape = 15) +
+# ANNUAL PLOT
+C_CLAFTCCOgraphAnn <- ggplot(data = annual_discharge1, aes(x = year, y = av_dischyr1)) + geom_line(color = "salmon2") + geom_point(color = "salmon2") +
+  geom_line(data = C_annual_discharge1, aes(x = year, y = C_av_avg_dischyr1), color = "gray59") +
+  geom_point(data = C_annual_discharge1, aes(x = year, y = C_av_avg_dischyr1), color = "gray59", shape = 15) +
   scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
-  labs(title = "Canyon Gage Annual Discharge with FEIS Impacts", y="Average discharge (cfs)", x = "Year")
+  scale_y_continuous(breaks = seq(0, 1000, 250), lim = c(0, 1000)) +
+  labs(title = "Canyon Gage Annual Discharge", y="Average discharge (cfs)", x = "Year")
 
 print(C_CLAFTCCOgraphAnn)
 
 
+# MONTHLY % changes (historical vs. post-NISP)
+CLAFTCCO_monchange <- left_join(monthly_discharge1, C_monthly_discharge1)
+CLAFTCCO_monchange <- CLAFTCCO_monchange %>% 
+  mutate(prtchange = (C_av_avg_dischm1 - av_dischm1)/av_dischm1 * 100)
+
+
 
 ## CLAFORCO
-# MONTHLY CHANGE
+# MONTHLY change
 C_Mon_Discharge2 <- Discharge2 %>%
   mutate(month = month(Date)) %>%
   group_by(month)
 # Subtract values by month
 C_Mon_Discharge2 <- C_Mon_Discharge2 %>% 
-  mutate(mindischarge_applied = case_when(month == 6 ~ (discharge_cfs-18.48611),
-                                          TRUE ~ as.numeric(discharge_cfs)),
-         maxdischarge_applied = case_when(month == 1 ~ (discharge_cfs-40.658602),
-                                          month == 3 ~ (discharge_cfs-19.516129),
-                                          month == 4 ~ (discharge_cfs-389.888889),
-                                          month == 5 ~ (discharge_cfs-899.368280),
-                                          month == 6 ~ (discharge_cfs-1057.069444),
-                                          month == 7 ~ (discharge_cfs-161.008065),
-                                          month == 8 ~ (discharge_cfs-121.975806),
-                                          month == 10 ~ (discharge_cfs-17.889785),
-                                          month == 12 ~ (discharge_cfs-3.252688),
-                                          TRUE ~ as.numeric(discharge_cfs)),
-         avgdischarge_applied = case_when(month == 4 ~ (discharge_cfs-35.29167),
+  mutate(avgdischarge_applied = case_when(month == 4 ~ (discharge_cfs-35.29167),
                                           month == 5 ~ (discharge_cfs-174.01882),
                                           month == 6 ~ (discharge_cfs-294.09722),
                                           month == 7 ~ (discharge_cfs-84.56989),
                                           month == 8 ~ (discharge_cfs-27.64785),
                                           TRUE ~ as.numeric(discharge_cfs)))
-
 # Calculate mean discharges based on FEIS impacts
 C_monthly_discharge2 <- C_Mon_Discharge2 %>% 
-  summarize(C_av_min_dischm2 = mean(mindischarge_applied),
-            C_av_max_dischm2 = mean(maxdischarge_applied),
-            C_av_avg_dischm2 = mean(avgdischarge_applied))
-# Repeat with ANNUAL CHANGE
+  summarize(C_av_avg_dischm2 = mean(avgdischarge_applied))
+
+# Repeat with ANNUAL change
 C_Ann_Discharge2 <- C_Mon_Discharge2 %>% 
   mutate(year = year(Date)) %>%
   group_by(year)
 C_annual_discharge2 <- C_Ann_Discharge2 %>% 
-  summarize(C_av_min_dischyr2 = mean(mindischarge_applied),
-            C_av_max_dischyr2 = mean(maxdischarge_applied),
-            C_av_avg_dischyr2 = mean(avgdischarge_applied))
+  summarize(C_av_avg_dischyr2 = mean(avgdischarge_applied))
 
-# PLOT only average impacts
-C_CLAFORCOgraphMon <- ggplot(data = monthly_discharge2, aes(x = month, y = av_dischm2)) + geom_line(color = "skyblue4") + geom_point(color = "skyblue4") +
-  geom_line(data = C_monthly_discharge2, aes(x = month, y = C_av_avg_dischm2), color = "tan1") +
-  geom_point(data = C_monthly_discharge2, aes(x = month, y = C_av_avg_dischm2), color = "tan1", shape = 15) + 
+# PLOT average impacts
+# MONTHLY PLOT
+C_CLAFORCOgraphMon <- ggplot(data = monthly_discharge2, aes(x = month, y = av_dischm2)) + geom_line(color = "skyblue2") + geom_point(color = "skyblue2") +
+  geom_line(data = C_monthly_discharge2, aes(x = month, y = C_av_avg_dischm2), color = "slategray") +
+  geom_point(data = C_monthly_discharge2, aes(x = month, y = C_av_avg_dischm2), color = "slategray", shape = 15) + 
   scale_x_continuous(breaks = seq(1, 12, 1), lim = c(1, 12)) +
-  labs(title = "Fort Collins Monthly Discharge with FEIS Impacts", y="Average discharge (cfs)", x = "Month")
+  scale_y_continuous(breaks = seq(0, 1700, 500), lim = c(0, 1700)) +
+  labs(title = "Fort Collins Gage Monthly Discharge", y="Average discharge (cfs)", x = "Month")
 
 print(C_CLAFORCOgraphMon)
 
-C_CLAFORCOgraphAnn <- ggplot(data = annual_discharge2, aes(x = year, y = av_dischyr2)) + geom_line(color = "skyblue4") + geom_point(color = "skyblue4") +
-  geom_line(data = C_annual_discharge2, aes(x = year, y = C_av_avg_dischyr2), color = "tan1") +
-  geom_point(data = C_annual_discharge2, aes(x = year, y = C_av_avg_dischyr2), color = "tan1", shape = 15) + 
+# ANNUAL PLOT
+C_CLAFORCOgraphAnn <- ggplot(data = annual_discharge2, aes(x = year, y = av_dischyr2)) + geom_line(color = "skyblue2") + geom_point(color = "skyblue2") +
+  geom_line(data = C_annual_discharge2, aes(x = year, y = C_av_avg_dischyr2), color = "slategray") +
+  geom_point(data = C_annual_discharge2, aes(x = year, y = C_av_avg_dischyr2), color = "slategray", shape = 15) + 
   scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
-  labs(title = "Fort Collins Annual Discharge with FEIS Impacts", y="Average discharge (cfs)", x = "Year")
+  scale_y_continuous(breaks = seq(0, 1000, 250), lim = c(0, 1000)) +
+  labs(title = "Fort Collins Gage Annual Discharge", y="Average discharge (cfs)", x = "Year")
 
 print(C_CLAFORCOgraphAnn)
+
+
+# MONTHLY % changes (historical vs. post-NISP)
+CLAFORCO_monchange <- left_join(monthly_discharge2, C_monthly_discharge2)
+CLAFORCO_monchange <- CLAFORCO_monchange %>% 
+  mutate(prtchange = ((C_av_avg_dischm2 - av_dischm2)/av_dischm2) * 100)
 
 # BOATABLE DAYS --------------------------------------------------
 # BASED ON SURVEY RESULTS:
@@ -251,6 +239,7 @@ print(C_CLAFORCOgraphAnn)
 ##                     > 365.217391 cfs for CLAFORCO
 
 # CLAFTCCO
+# Post-NISP average diversions
 CountAVG1 <- C_Mon_Discharge1[which(C_Mon_Discharge1$avgdischarge_applied >= 529.166670),]
 CountAVG1 <- CountAVG1 %>%
   mutate(year = year(Date),
@@ -258,39 +247,41 @@ CountAVG1 <- CountAVG1 %>%
   group_by(year) %>% 
   summarize(BoatableDaysAvgImpact = sum(logic))
 
-CountBAU1 <- Discharge1[which(Discharge1$discharge_cfs >= 529.166670),] # BAU = business as usual
+# Business as usual (BAU = historical)
+CountBAU1 <- Discharge1[which(Discharge1$discharge_cfs >= 529.166670),] 
 CountBAU1 <- CountBAU1 %>%
   mutate(year = year(Date),
          logic = 1) %>%
   group_by(year) %>% 
   summarize(BoatableDaysNoImpact = sum(logic))
 
+
 # PLOT density of boatable days
-Count_Density1 <- ggplot (data = CountAVG1, aes(BoatableDaysAvgImpact)) + geom_density(color = "gold") +
-  geom_density(data = CountBAU1, aes(BoatableDaysNoImpact), color = "darkolivegreen") +
+Count_Density1 <- ggplot (data = CountAVG1, aes(BoatableDaysAvgImpact)) + geom_density(color = "gray59") +
+  geom_density(data = CountBAU1, aes(BoatableDaysNoImpact), color = "salmon2") +
   scale_x_continuous(breaks = seq(0, 120, 20), lim = c(0, 120)) +
   labs(y = "Density", x = "Boatable Days")
 
 print(Count_Density1)
 
-# Make individual bar graphs
+# Individual bar graphs
+# POST-NISP PLOT
 Count_barAVG1 <- ggplot (data = CountAVG1, aes(x = year, y = BoatableDaysAvgImpact)) + 
-  geom_bar(stat = "identity", fill = "gold") +
-  scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
+  geom_bar(stat = "identity", fill = "gray59") +
   scale_y_continuous(breaks = seq(0, 140, 20), lim = c(0, 140)) +
   labs(y = "Boatable Days", x = "Year")
 
 print(Count_barAVG1)
 
+# HISTORICAL PLOT
 Count_barBAU1 <- ggplot (data = CountBAU1, aes(x = year, y = BoatableDaysNoImpact)) + 
-  geom_bar(stat = "identity", fill = "darkolivegreen") +
-  scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
+  geom_bar(stat = "identity", fill = "salmon2") +
   scale_y_continuous(breaks = seq(0, 140, 20), lim = c(0, 140)) +
   labs(y = "Boatable Days", x = "Year")
 
 print(Count_barBAU1)
 
-# Make stacked bar
+# STACKED BAR PLOT
   # Make compiled df
     Count_CLAFTCCO <- left_join(CountBAU1, CountAVG1, by = "year")
       Count_CLAFTCCO[is.na(Count_CLAFTCCO)] <- 0 # Make N/A values = 0
@@ -298,25 +289,39 @@ print(Count_barBAU1)
       mutate(a = abs(BoatableDaysAvgImpact-BoatableDaysNoImpact)) %>% # Find difference of boatable days
       select(year, BoatableDaysAvgImpact, a)
     
-    Count_CLAFTCCO <- Count_CLAFTCCO %>% 
+    dfCount_CLAFTCCO <- Count_CLAFTCCO %>% 
       gather(Impact, BoatableDays, 2:3)
-    
   # PLOT
-    Bar_CLAFTCCO <- ggplot(data = Count_CLAFTCCO, aes(x = year, y = BoatableDays, fill = Impact)) +
+    Bar_CLAFTCCO <- ggplot(data = dfCount_CLAFTCCO, aes(x = year, y = BoatableDays, fill = Impact)) +
       geom_bar(stat = "identity", position = "stack") + 
-      scale_fill_manual(values=c("tomato2", "gray"), 
+      scale_fill_manual(values=c("tomato2", "gray59"), 
                         name="",
                         breaks=c("a", "BoatableDaysAvgImpact"),
-                        labels=c("Loss of days", "Post-NISP Boatable Days")) +
+                        labels=c("Loss of days", "Post-NISP")) +
       scale_y_continuous(breaks = seq(0, 140, 20), lim = c(0, 140)) +
       theme(legend.position="bottom") +
       labs(y = "Boatable Days", x = "Year")
     
     print(Bar_CLAFTCCO)
+    
+# BOXPLOT
+    Count_CLAFTCCO <- left_join(CountBAU1, CountAVG1, by = "year") 
+    Count_CLAFTCCO[is.na(Count_CLAFTCCO)] <- 0 # Make N/A values = 0
+    Count_CLAFTCCO <- Count_CLAFTCCO %>% 
+      mutate(a = abs(BoatableDaysAvgImpact-BoatableDaysNoImpact)) %>% 
+      select(year, a)
+  # PLOT
+    Box_CLAFTCCO <- ggplot(data = Count_CLAFTCCO, aes(x = year, y = a)) + geom_boxplot() +
+      labs(y = "Boatable Days", x = "Year") +
+      scale_y_continuous(breaks = seq(0, 30, 5), lim = c(0, 30)) +
+      scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020))
+    
+    print(Box_CLAFTCCO)
   
 
 
 ## CLAFORCO
+# Post-NISP average diversions
 CountAVG2 <- C_Mon_Discharge2[which(C_Mon_Discharge2$avgdischarge_applied >= 365.217391),]
 CountAVG2 <- CountAVG2 %>%
   mutate(year = year(Date),
@@ -324,6 +329,7 @@ CountAVG2 <- CountAVG2 %>%
   group_by(year) %>% 
   summarize(BoatableDaysAvgImpact = sum(logic))
 
+# Business as usual (BAU = historical)
 CountBAU2 <- Discharge2[which(Discharge2$discharge_cfs >= 365.217391),]
 CountBAU2 <- CountBAU2 %>%
   mutate(year = year(Date),
@@ -332,29 +338,31 @@ CountBAU2 <- CountBAU2 %>%
   summarize(BoatableDaysNoImpact = sum(logic))
 
 # PLOT density of boatable days
-Count_Density2 <- ggplot (data = CountAVG2, aes(BoatableDaysAvgImpact)) + geom_density(color = "tan1") +
-  geom_density(data = CountBAU2, aes(BoatableDaysNoImpact), color = "skyblue4") +
-  scale_x_continuous(breaks = seq(0, 120, 20), lim = c(0, 120)) +
+Count_Density2 <- ggplot (data = CountAVG2, aes(BoatableDaysAvgImpact)) + geom_density(color = "slategray") +
+  geom_density(data = CountBAU2, aes(BoatableDaysNoImpact), color = "skyblue2") +
+  scale_x_continuous(breaks = seq(0, 140, 20), lim = c(0, 140)) +
   labs(y = "Density", x = "Boatable Days")
 
 print(Count_Density2)
 
-# Make individual bar graphs
-Count_barAVG2 <- ggplot (data = CountAVG2, aes(x = year, y = BoatableDaysAvgImpact)) + geom_bar(stat = "identity", fill = "tan1") +
-  scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
-  scale_y_continuous(breaks = seq(0, 120, 20), lim = c(0, 120)) +
+# Individual bar graphs
+# POST-NISP PLOT
+Count_barAVG2 <- ggplot (data = CountAVG2, aes(x = year, y = BoatableDaysAvgImpact)) + 
+  geom_bar(stat = "identity", fill = "slategray") +
+  scale_y_continuous(breaks = seq(0, 140, 20), lim = c(0, 140)) +
   labs(y = "Boatable Days", x = "Year")
 
 print(Count_barAVG2)
 
-Count_barBAU2 <- ggplot (data = CountBAU2, aes(x = year, y = BoatableDaysNoImpact)) + geom_bar(stat = "identity", fill = "skyblue4") +
-  scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020)) +
-  scale_y_continuous(breaks = seq(0, 120, 20), lim = c(0, 120)) +
+# HISTORICAL PLOT
+Count_barBAU2 <- ggplot (data = CountBAU2, aes(x = year, y = BoatableDaysNoImpact)) + 
+  geom_bar(stat = "identity", fill = "skyblue2") +
+  scale_y_continuous(breaks = seq(0, 140, 20), lim = c(0, 140)) +
   labs(y = "Boatable Days", x = "Year")
 
 print(Count_barBAU2)
 
-# Make stacked bar
+# STQACKED BAR PLOT
   # Make compiled df
     Count_CLAFORCO <- left_join(CountBAU2, CountAVG2, by = "year")
       Count_CLAFORCO[is.na(Count_CLAFORCO)] <- 0 # Make N/A values = 0
@@ -362,19 +370,32 @@ print(Count_barBAU2)
       mutate(a = abs(BoatableDaysAvgImpact-BoatableDaysNoImpact)) %>% 
       select(year, a, BoatableDaysAvgImpact)
 
-    Count_CLAFORCO <- Count_CLAFORCO %>% 
+    dfCount_CLAFORCO <- Count_CLAFORCO %>% 
       gather(Impact, BoatableDays, 2:3)
-
   # PLOT
-    Bar_CLAFORCO <- ggplot(data = Count_CLAFORCO, aes(x = year, y = BoatableDays, fill = Impact)) +
-      geom_bar(stat = "identity", position = "stack") + 
+    Bar_CLAFORCO <- ggplot(data = dfCount_CLAFORCO, aes(x = year, y = BoatableDays, fill = Impact)) +
+      geom_bar(stat = "identity", position = "stack") +
       scale_fill_manual(values=c("tomato2", "slategray"), 
                         name="",
                         breaks=c("a", "BoatableDaysAvgImpact"),
-                        labels=c("Loss of days", "Post-NISP Boatable Days")) +
-      scale_y_continuous(breaks = seq(0, 120, 20), lim = c(0, 120)) +
+                        labels=c("Loss of days", "Post-NISP")) +
+      scale_y_continuous(breaks = seq(0, 140, 20), lim = c(0, 140)) +
       theme(legend.position="bottom") +
       labs(y = "Boatable Days", x = "Year")
     
     print(Bar_CLAFORCO)
     
+
+# BOXPLOT
+    Count_CLAFORCO <- left_join(CountBAU2, CountAVG2, by = "year")
+    Count_CLAFORCO[is.na(Count_CLAFORCO)] <- 0 # Make N/A values = 0
+    Count_CLAFORCO <- Count_CLAFORCO %>% 
+      mutate(a = abs(BoatableDaysAvgImpact-BoatableDaysNoImpact)) %>% 
+      select(year, a)
+  # PLOT
+    Box_CLAFORCO <- ggplot(data = Count_CLAFORCO, aes(x = year, y = a)) + geom_boxplot() +
+      labs(y = "Boatable Days", x = "Year") +
+      scale_y_continuous(breaks = seq(0, 30, 5), lim = c(0, 30)) +
+      scale_x_continuous(breaks = seq(1980, 2020, 10), lim = c(1980, 2020))
+   
+     print(Box_CLAFORCO)
