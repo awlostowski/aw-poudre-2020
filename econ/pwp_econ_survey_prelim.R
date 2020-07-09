@@ -70,6 +70,10 @@ survey <- survey %>%
   ungroup()
            
 
+# Export
+saveRDS(object = survey,
+        file = "private_data/pwp_survey_20200630.RDS")
+
 ###############################################################################
 # Make some plots
 
