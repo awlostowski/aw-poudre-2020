@@ -56,6 +56,10 @@ segments <- unique(flowpref.dat$segment.name)
 pref_range = max(flowpref.dat$preference.code, na.rm = T) - 
               min(flowpref.dat$preference.code, na.rm = T)
 
+# Create dummy data frame for storing average flow preference and PCI2
+# values per segment and flow level
+flow_pref_summary <- data.frame()
+
 # Loop through each segment
 # calculate flow preference
 # and plot the data
@@ -150,4 +154,14 @@ for(i in 1:length(segments)){
             plot = flow_pref_plot,
             base_width = 7)
   
+  # Add summary data to data frame
+  flow_pref_summary <- bind_rows(flow_pref_summary,
+                                 select(results, flow, n_obs, pref.average, pci2) %>% 
+                                   mutate(segment = segment_name))
+  
 }
+
+# Export the flow preference data
+write.csv(x = flow_pref_summary,
+          file = "private_data/flow_pref_by_reach.csv", 
+          row.names = F, quote = F)
