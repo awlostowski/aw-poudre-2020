@@ -50,28 +50,71 @@ respondent.id.valid = respondent.attributes %>%
 # Make a vector of segment names
 segments <- unique(flowpref.dat$segment.name)
 
+# Calculate the range between maximum and minimum preference code values
+# These are used in calculating the PCI2 value below
+# These can be entered by hand per survey, but they are done programatically here
+pref_range = max(flowpref.dat$preference.code, na.rm = T) - 
+              min(flowpref.dat$preference.code, na.rm = T)
+
 # Loop through each segment
 # calculate flow preference
 # and plot the data
 for(i in 1:length(segments)){
+  
+  # Identify segment
   segment_name = segments[i]
   segment_name2 = str_replace_all(segment_name, pattern = " ", replacement = "")
-  results <- flowpref.dat %>%
-    
-    # Remove NAs and select a specific segment
-    filter(!is.na(preference.code) & 
+  
+  # Create temporary data frame for the segment data
+  flow.dat.tmp <- flowpref.dat %>%
+        filter(!is.na(preference.code) & 
              segment.name == segment_name &
-             respondent_id %in% respondent.id.valid) %>%
-    
-    # calculate the average pref score and PCI2 statistic of each flow bin
+             respondent_id %in% respondent.id.valid)
+  
+  # Summarize the data for calculation of PCI2
+  # m is the denominator of PCI2
+  results <- flow.dat.tmp %>%
     group_by(flow) %>%
     summarize(pref.average = mean(preference.code),   # average preference
-              d = sum(abs(dist(preference.code))),    # sum of the score distance vector
-              m = sum(abs(dist(rep(c(-3,3),n())))),   # maximum possible sum of distance vector
-              pci2 = d/m,                             # PCI2 = d/m
-              n_obs = length(flow))                   # count # of observations
+              n_obs = length(flow),                   # count # of observations
+              m = ifelse(n_obs %% 2 == 0,
+                         (pref_range * (n_obs^2))/ 2,
+                         (pref_range * ((n_obs^2) - 1))/ 2)) # max distance vector
+
+  # Summarize the data by flow and preference code
+  # This will be used to compute distance sum below (the numerator of PCI2)
+  flow.summary.tmp <- flow.dat.tmp %>% 
+    group_by(flow, preference.code) %>% 
+    summarize(n_obs = n())
   
+  # Calculate the distance sum as in Vaske et al. (2010)
+  # Here, distance is only computed for preference codes of opposite signs
+  # (i.e., zero is not considered)
+  distance_sum <-
+    bind_rows(
+      full_join(filter(flow.summary.tmp, preference.code == 2),
+                filter(flow.summary.tmp, preference.code == -2),
+                by = "flow"),
+      full_join(filter(flow.summary.tmp, preference.code == 1),
+                filter(flow.summary.tmp, preference.code == -2),
+                by = "flow"),
+      full_join(filter(flow.summary.tmp, preference.code == 2),
+                filter(flow.summary.tmp, preference.code == -1),
+                by = "flow"),
+      full_join(filter(flow.summary.tmp, preference.code == 1),
+                filter(flow.summary.tmp, preference.code == -1),
+                by = "flow")      
+    ) %>% 
+    group_by(flow) %>% 
+    summarize(d = sum(2 * n_obs.x * n_obs.y * 
+                        (preference.code.x - preference.code.y),
+                      na.rm = T))
   
+  # Bind the d and m data and compute PCI2 (d/m)
+  results <- left_join(results, distance_sum,
+                       by = "flow") %>% 
+    mutate(pci2 = d/m)
+
   # Plot
   flow_pref_plot <- 
     ggplot() +
@@ -82,7 +125,8 @@ for(i in 1:length(segments)){
     geom_point(data = filter(results, n_obs > 2), 
                aes(x = flow, y = pref.average, size = pci2), 
                color = 'blue') +
-    geom_hline(yintercept = 0)
+    geom_hline(yintercept = 0) +
+    scale_size_continuous(name = expression(PCI[2]))
   
   # Add axis labels and titles
   # Some reaches have stage values, others have flow
