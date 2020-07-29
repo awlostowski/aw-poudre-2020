@@ -7,6 +7,9 @@
 #'
 #' This script computes where each flow preference curve crosses zero for
 #' the various Poudre River reaches. 
+#' 
+#' NOTE: SEE poudre_flow_pref_filter_plot.R for improved zero-crossing 
+#' calculation and integration with plotting
 
 # Load packages
 library(tidyverse)

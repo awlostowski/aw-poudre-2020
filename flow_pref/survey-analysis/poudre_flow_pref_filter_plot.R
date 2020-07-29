@@ -8,6 +8,7 @@
 library(tidyverse)
 library(here)
 library(cowplot); theme_set(theme_cowplot())
+library(rootSolve) # for computing flow preference thresholds
 
 # Import data
 # Note .RData files are in gitignore, so these must be on your local machine
@@ -119,6 +120,21 @@ for(i in 1:length(segments)){
                        by = "flow") %>% 
     mutate(pci2 = d/m)
 
+  # Calculate where flow/stage crosses zero (defines flow acceptability)
+  flow_thresh = uniroot.all(approxfun(results$flow, results$pref.average), 
+                            interval = range(results$flow))
+  
+  # If there's only 1 zero crossing min = acceptability threshold
+  # and max = max flow
+  # If there's two, then max = second crossing
+  if(length(flow_thresh) == 1){
+    flow_thresh_min = flow_thresh
+    flow_thresh_max = max(results$flow)
+  } else {
+    flow_thresh_min = flow_thresh[1]
+    flow_thresh_max = flow_thresh[2]
+  }
+  
   # Plot
   flow_pref_plot <- 
     ggplot() +
@@ -130,27 +146,46 @@ for(i in 1:length(segments)){
                aes(x = flow, y = pref.average, size = pci2), 
                color = 'blue') +
     geom_hline(yintercept = 0) +
-    scale_size_continuous(name = expression(PCI[2]))
+    scale_radius(name = expression(PCI[2]), range = c(1,6)) +
+    geom_segment(aes(x = flow_thresh_min, xend = flow_thresh_max, y = 0, yend = 0), 
+                 color = "black",
+                 arrow = arrow(ends = "both"),
+                 lwd = 1.5) 
+          # scale_radius provides more visually intuitive point scaling
+          # than scale_size
   
   # Add axis labels and titles
+  # Plus acceptable flow/stage range
   # Some reaches have stage values, others have flow
   # So use if-else to assign correct label
   if(max(results$flow, na.rm = T) < 100){
     flow_pref_plot <- flow_pref_plot +
       labs(x = "Stage (ft.)",
            y = "Preference Score",
-           title = paste0(segment_name, " Stage Preference Curve"))
+           title = paste0(segment_name, " Stage Preference Curve")) +
+      annotate(geom = "text", y = -0.3, x = mean(c(flow_thresh_min, flow_thresh_max)),
+               label = paste0("Acceptable Stage Range\n",
+                              signif(flow_thresh_min, 2),
+                              " ft. to ",
+                              signif(flow_thresh_max, 2),
+                              " ft."))
   }else{
     flow_pref_plot <- flow_pref_plot +
       labs(x = "Flow (cfs)",
            y = "Preference Score",
-           title = paste0(segment_name, " Flow Preference Curve"))  
+           title = paste0(segment_name, " Flow Preference Curve"))  +
+      annotate(geom = "text", y = -0.3, x = mean(c(flow_thresh_min, flow_thresh_max)),
+               label = paste0("Acceptable Flow Range\n",
+                              signif(flow_thresh_min, 3),
+                              " cfs to ",
+                              signif(flow_thresh_max, 3),
+                              " cfs"))
     }
 
   # Export plot
   save_plot(filename = paste0("plots/flow_pref/flow_pref_",
                               segment_name2,
-                              "_av_only.png"),
+                              "_av_only_annotated.png"),
             plot = flow_pref_plot,
             base_width = 7)
   
