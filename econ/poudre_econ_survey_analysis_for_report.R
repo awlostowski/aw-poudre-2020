@@ -105,6 +105,11 @@ survey_summary_pwp$spend_av = spend_pwp_av
 survey_summary <- bind_rows(survey_summary, survey_summary_pwp) %>% 
   mutate(spend_av_per_cat = spend_av * percent)
 
+# Export
+write.csv(x = survey_summary,
+          file = "private_data/spending_by_category.csv",
+          row.names = F, quote = F)
+
 
 # Plot
 spending_by_cat_plot <- 
