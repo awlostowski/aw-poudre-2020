@@ -110,11 +110,19 @@ survey <- survey %>%
                                        as.integer(trip_length) == 4 ~ 35,
                                        as.integer(trip_length) == 5 ~ 50))
 
+# Change more_visits_pwp to a yes/no column
+survey$more_visits_pwp <- ifelse(is.na(survey$more_visits_pwp),
+                                 NA,
+                                 ifelse(survey$more_visits_pwp == "No",
+                                        "n",
+                                        "y"))
+
 # Export the respondent attributes
 # Variables for now are similar to those exported by Adam in earlier version
 survey %>% 
   select(respondent_id, city, state, zip_code, skill, skill_rapidclass, 
-         category, visit_freq, report_confidence) %>% 
+         category, visit_freq, report_confidence, more_visits_pwp, visit_n, 
+         trip_length_miles) %>% 
   saveRDS(object = .,
           file = "private_data/respondent-attributes_20200630.RDS")
 
@@ -247,3 +255,52 @@ econ_survey <- econ_survey %>%
                                     na.rm = T)) %>% 
   select(respondent_id, spend_food:spend_total_no_equip) %>% 
   ungroup()
+
+# Export the econ data
+saveRDS(object = econ_survey,
+        file = "private_data/econ_survey_20200630.RDS")
+
+
+# SUmmarize the survey data
+# Break out by spending category
+survey_summary <- econ_survey %>% 
+  filter(spend_total_no_equip < 450 & spend_total_no_equip > 0) %>% 
+  select(respondent_id, starts_with("spend"), 
+         -spend_equipment, -spend_total, -spend_total_no_equip) %>% 
+  melt(id.vars = "respondent_id", value.name = "spend", variable.name = "category") %>% 
+  mutate(category = str_replace(category, "spend_", "")) %>% 
+  group_by(category) %>% 
+  summarise(total = sum(spend, na.rm = T)) %>% 
+  mutate(site = "CAN",
+         percent = total / sum(total))
+
+# Add margins
+margins <- data.frame(category = c("clothing", "food", "gas", "lodging",
+                                   "other", "souvenirs"),
+                      margin = c(0.3785274, 0.2543902, 0.1418711, 1.0000000,
+                                 0.3785274, 0.3785274))
+
+# Join
+survey_summary <- left_join(survey_summary, margins,
+                            by = "category")
+
+# Add total spent
+spend_total = mean(filter(econ_survey, spend_total_no_equip < 450 &
+                            spend_total_no_equip > 0)$spend_total_no_equip)
+
+survey_summary <- survey_summary %>% 
+  mutate(demand_change = percent * spend_total * margin)
+
+################################################################################
+# Plots
+# MOVE TO DIFFERENT SCRIPT
+
+# SKill breakdown
+survey %>% 
+  ggplot(aes(skill)) + 
+  geom_bar(stat = "count", fill = "steelblue", color = "black") + 
+  coord_flip() +
+  labs(y = "Total Respondents",
+       title = "Survey Respondents by Skill") +
+  theme(axis.title.y = element_blank()) +
+  scale_x_discrete(labels = c("Novice", "Intermediate", "Advanced", "Expert"))
