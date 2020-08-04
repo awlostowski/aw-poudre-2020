@@ -119,6 +119,9 @@ for(i in 1:length(segments)){
   results <- left_join(results, distance_sum,
                        by = "flow") %>% 
     mutate(pci2 = d/m)
+  
+  # Filter results so that n_obs > 5
+  results <- filter(results, n_obs > 5)
 
   # Calculate where flow/stage crosses zero (defines flow acceptability)
   flow_thresh = uniroot.all(approxfun(results$flow, results$pref.average), 
