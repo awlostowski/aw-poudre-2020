@@ -111,12 +111,4 @@ print(p1)
 
 saveRDS(flow_data, file = here::here("flow_pref","rating-curves","pine_view_model.RDS"))
 
-# ======================================================
 
-# # Load rock observations
-# load(here::here("flow_pref","rating-curves","stage_data.Rdata"))
-# 
-# flow_stage <- flow_data %>%
-#   left_join(stage, by = "date") %>%
-#   mutate(na.check = is.na(Pineview)) %>%
-#   filter(na.check == F)

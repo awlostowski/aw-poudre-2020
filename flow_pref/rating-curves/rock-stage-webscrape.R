@@ -7,7 +7,7 @@ library(lubridate)
 library(rvest)
 
 # blog archives are organized by month and year.
-page = seq(1,308,1)
+page = seq(1,342,1)
 
 # remove a handful of pages where some posts do not have titles - this trips up my workflow.
 # while I could find an end-around, this is a temporary solution...
@@ -16,7 +16,7 @@ page = seq(1,308,1)
 # This solution is problematic because pages are organized from 1 to n, where 1 is the most recent.
 # So, every time a new page is generated, we will need to change these values in order for the code to run!
 
-page = page[-which(page == 126 | page == 139 | page == 161 | page == 167 | page == 195)]
+page = page[-which(page == 157 | page == 170 | page == 192 | page == 198 | page == 199 | page == 226)]
 
 
 # loop over archive years
@@ -31,7 +31,7 @@ for (n in page) {
       rock_report <- read_html(site_name)
     
     # STEP 2: extract pieces out of HTML using CSS selectors %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # NOTE: use SelectorGadget too l in Chrome to get CSS code
+    # NOTE: use SelectorGadget tool in Chrome to get CSS code
     
       # blog post titles, which contain Pine View stage observations
       title_content = rock_report %>%
@@ -154,6 +154,7 @@ for (n in page) {
   
 
 # SAVE data ----------------------------------------
-save(stage, file = here::here("flow_pref","rating-curves","stage_data.Rdata"))
+saveRDS(stage, file = here::here("flow_pref","rating-curves",paste0("stage_data_",min(year(stage$date)),"_",
+                                                                    max(year(stage$date)),".RDS")))
 
 
