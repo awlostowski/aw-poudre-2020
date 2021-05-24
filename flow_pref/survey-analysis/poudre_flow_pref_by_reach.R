@@ -17,8 +17,8 @@ library(here)
 
 # Import data
 # Note .RData files are in gitignore, so these must be on your local machine
-load(file = here("flow_pref", "survey-analysis", "respondend-attributes.Rdata"))
-load(file = here("flow_pref", "survey-analysis", "flow-pref-data.Rdata"))
+load(file = here::here("flow_pref", "survey-analysis", "respondend-attributes.Rdata"))
+load(file = here::here("flow_pref", "survey-analysis", "flow-pref-data.Rdata"))
 
 # Convert flow to numeric
 flowpref.dat <- flowpref.dat %>% 
