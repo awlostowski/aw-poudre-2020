@@ -155,10 +155,15 @@ full_content <- bind_rows(content)
 ##### By Eric Cai - The Chemical Statistician
 
 # save to local path 
-# path <- "C:/Users/angus/OneDrive/Desktop/lynker/AWW/data/"
+path <- "C:/Users/angus/OneDrive/Desktop/lynker/AWW/data/"
 # saveRDS(full_content, paste0(path, "rock_report/stage_poudre_rock_report.rds"))
 
-
+rock_report <- readRDS(paste0(path, "rock_report/stage_poudre_rock_report.rds"))
+average_flow <- rock_report %>% 
+  filter(Pineview <= 10, is.na(time) == F)
+ggplot() +
+  geom_point(data = average_flow, aes(x = date, y = Pineview))
+  
 
 
 
