@@ -162,8 +162,16 @@ rock_report <- readRDS(paste0(path, "rock_report/stage_poudre_rock_report.rds"))
 average_flow <- rock_report %>% 
   filter(Pineview <= 10, is.na(time) == F)
 ggplot() +
-  geom_point(data = average_flow, aes(x = date, y = Pineview))
-  
-
+  geom_point(data = average_flow, aes(x = date, y = Pineview)) +
+  labs( 
+    title = "Pineview Stage from Poudre Rock Report",
+    y = "Stage (ft)",
+    x= "Date"
+  ) +
+    theme_bw() +
+    theme(
+      axis.text = element_text(size = 14),
+      axis.title  = element_text(size = 14)
+    ) 
 
 
