@@ -9,24 +9,30 @@ output:
 library(here)
 library(tidyverse)
 library(lubridate)
+library(knitr)
+library(kableExtra)
 
 load(here::here("flow_pref","survey-analysis","tidy-response-workspace.Rdata"))
 ```
 
 # Data Collection
-- Flow preference surveys are designed to gauge user-percieved quality of whitewater conditions as a function of flow.
-- Surveys ask respondents to associate a preference ranking with specified flow rates.
-- [Graphic illustrating survey question with boxes and check marks]
+- Flow preference surveys are designed to gauge user-percieved quality of whitewater conditions as a function of flow on specific river segments.
+- The survey ask respondents to rate the acceptabilty of specified flow levels. The prompt as stated in the suvey is:
+
+> With your preferred craft-type in mind, please consider all the flow-dependent characteristics that contribute to a high quality experience (e.g., depth, challenge, safety, availability of surfing or other play areas, aesthetics, and length of run). For comparative purposes, please rate the acceptability of each flow level.
+
+- Respondents ra
 - Surveys are distributed by Survey Monkey
 - As of MM/DD we have recieved N responses
 
 ![The survey asks responents to indicate their percieved preference for specific flow rates.](images/survey-schematic.jpg)
 
 # Data Processing
-- The data exported from Survey monkey are not optimally formatted for analysis. 
-- tidy
-- Numericize preference response
-```{r}
+- The data exported from Survey Monkey are not optimally formatted for analysis. The raw data must be cleaned and reorganized into a "tidy" format, and flow preference data must be numerically coded. This process is done in `flow_pref/survey-analysis/tidy-response-data.R`.
+
+### Numericize flow preference data
+- Preference response data are converted to a numeric variable class, with values ranging from -2 to 2 (Table 1). This allows us to easily quantitatively analyze flow preferences.
+```{r, echo= FALSE}
 string_response = c("Acceptable",
                    "Somewhat Acceptable",
                    "Marginal",
@@ -38,17 +44,55 @@ numeric_response = c(2,1,0,-1,-2)
 conversion_table <- data.frame(string_response,
                                numeric_response)
 
-head(conversion_table, n = 6)
+
+tbl <- knitr::kable(conversion_table,
+             caption =  "Table 1. Numeric codes for flow preference responses", 
+             col.names = c("Preference rank (character)","Numeric code"),
+             row.names = F)
+
+  
+  kableExtra::kable_styling(tbl, 
+                            bootstrap_options = "striped", 
+                            full_width = F,
+                            position = "center")
 ```
 
+### Respondent attributes data
+- Respondent attribute data include descriptive characteristics for each respondent. Attributes include a unique ID code, home location data, skill classification, seasonal trip frequency, and confidence assessing flow conditions (Table 2). Several other respondent attributes are also collected, but not shown in Table 2.
+```{r, echo=FALSE}
 
-- Respondent attributes, such as home address, percieved level of experience,  Respondent attributes:
-```{r}
-head(respondent.attributes, n = 100)
+tbl <- knitr::kable(respondent.attributes[1:10,c(1,3,4,5,13,14)],
+             caption =  "Table 2. Respondent attributes data",
+             row.names = F,
+             col.names = c("ID","State","Zip","Skill class","Trip frequency","Reporting confidence")
+             )
+
+  
+  kableExtra::kable_styling(tbl, 
+                            bootstrap_options = "striped", 
+                            full_width = F,
+                            position = "center")
 ```
-- Flow preference
-```{r}
-head(flowpref.dat, n = 100)
+### Flow preference data
+- Flow preference data include respondent ID, river segment, flow, and preference rankings (Table 3). This data set can be easily sorted and filtered and respondent attributes can be cross referenced by respondend ID. Preffered craft for the 
+```{r, echo=FALSE}
+library(tidyverse)
+
+dat <- flowpref.dat %>%
+  filter(respondent.id == "11587874606" & segment.name == "Filter Plant") %>%
+  select(respondent.id, segment.name, flow, preference, preference.code)
+
+tbl <- knitr::kable(dat[1:10,],
+             caption =  "Table 3. Example flow preference data",
+             row.names = F,
+             col.names = c("ID", "River Segment", "Flow Rate (cfs)", "Preference Ranking (char)", "Preference Ranking (numeric)")
+             )
+
+  
+  kableExtra::kable_styling(tbl, 
+                            bootstrap_options = "striped", 
+                            full_width = F,
+                            position = "center")
 ```
 
 
