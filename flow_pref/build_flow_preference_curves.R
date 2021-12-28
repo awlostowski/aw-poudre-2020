@@ -44,6 +44,50 @@ options(dplyr.summarise.inform = FALSE)
 ##------------------------------------------------------------------------------
 ## Function definitions
 
+LabelString <- function(thresh_min, thresh_max, max_plot, is.stage = FALSE) {
+  
+  if (is.stage == TRUE & !is.na(thresh_max)) {
+    
+    label.string <- paste0(
+      "Acceptable Stage Range\n",
+      signif(flow_thresh_min, 2),
+      " ft. to",
+      signif(flow_thresh_max, 2),
+      " ft."
+      ) 
+    
+  } else if (is.stage == TRUE & is.na(thresh_max)) {
+    
+    label.string <- paste0(
+      "Acceptable Stage Range\n",
+      signif(flow_thresh_min, 2),
+      " ft. and above"
+    ) 
+    
+  } else if (is.stage == FALSE & !is.na(thresh_max)) {
+
+    label.string <- paste0(
+      "Acceptable Flow Range\n",
+      signif(flow_thresh_min, 2),
+      " cfs to",
+      signif(flow_thresh_max, 2),
+      " cfs"
+    ) 
+    
+  } else {
+    
+    label.string <- paste0(
+      "Acceptable Flow Range\n",
+      signif(flow_thresh_min, 2),
+      " cfs. and above"
+    ) 
+    
+  }
+
+  return(label.string)
+  
+}
+
 ##------------------------------------------------------------------------------
 ## Executed statements
 
@@ -238,10 +282,13 @@ for(i in 1:length(segments)){
   # If there's two, then max = second crossing
   if(length(flow_thresh) == 1){
     flow_thresh_min = flow_thresh
-    flow_thresh_max = max(results$flow)
+#    flow_thresh_max = max(results$flow)
+    flow_thresh_max = NA
+    flow_thresh_max_plot = max(results$flow)
   } else {
     flow_thresh_min = flow_thresh[1]
     flow_thresh_max = flow_thresh[2]
+    flow_thresh_max_plot = flow_thresh[2]
   }
   
   # Plot
@@ -260,7 +307,7 @@ for(i in 1:length(segments)){
                color = 'blue') +
     geom_hline(yintercept = 0) +
     scale_radius(name = expression(PCI[2]), range = c(1,6)) +
-    geom_segment(aes(x = flow_thresh_min, xend = flow_thresh_max, y = 0, yend = 0), 
+    geom_segment(aes(x = flow_thresh_min, xend = flow_thresh_max_plot, y = 0, yend = 0), 
                  color = "black",
                  arrow = arrow(ends = "both"),
                  lwd = 1.5) 
@@ -278,12 +325,14 @@ for(i in 1:length(segments)){
       labs(x = "Stage (ft.)",
            y = "Preference Score",
            title = paste0(segment_name, " Stage Preference Curve")) +
-      annotate(geom = "text", y = -0.3, x = mean(c(flow_thresh_min, flow_thresh_max)),
-               label = paste0("Acceptable Stage Range\n",
-                              signif(flow_thresh_min, 2),
-                              " ft. to ",
-                              signif(flow_thresh_max, 2),
-                              " ft."))
+      annotate(geom = "text", y = -0.3, x = mean(c(flow_thresh_min, flow_thresh_max_plot)),
+               label = LabelString(
+                 flow_thresh_min, 
+                 flow_thresh_max, 
+                 flow_thresh_max_plot, 
+                 is.stage = TRUE
+                 )
+               )
   }else{
     
     logger::log_info("Creating FLOW-preference at {segment_name}")
@@ -292,12 +341,13 @@ for(i in 1:length(segments)){
       labs(x = "Flow (cfs)",
            y = "Preference Score",
            title = paste0(segment_name, " Flow Preference Curve"))  +
-      annotate(geom = "text", y = -0.3, x = mean(c(flow_thresh_min, flow_thresh_max)),
-               label = paste0("Acceptable Flow Range\n",
-                              signif(flow_thresh_min, 3),
-                              " cfs to ",
-                              signif(flow_thresh_max, 3),
-                              " cfs"))
+      annotate(geom = "text", y = -0.3, x = mean(c(flow_thresh_min, flow_thresh_max_plot)),
+               label = LabelString(
+                 flow_thresh_min, 
+                 flow_thresh_max, 
+                 flow_thresh_max_plot
+                 )
+               )
   }
   
   # Export plot
@@ -310,7 +360,9 @@ for(i in 1:length(segments)){
   # Add summary data to data frame
   flow_pref_summary <- bind_rows(flow_pref_summary,
                                  select(results, flow, stage, n_obs, pref.average, pci2) %>% 
-                                   mutate(segment = segment_name))
+                                   mutate(segment = segment_name,
+                                          minimally.acceptable.flow = flow_thresh_min,
+                                          maximally.acceptable.flow = flow_thresh_max))
   
 }
 
