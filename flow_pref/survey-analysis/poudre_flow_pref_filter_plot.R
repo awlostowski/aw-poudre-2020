@@ -15,9 +15,9 @@ library(rootSolve) # for computing flow preference thresholds
 # load(file = here("flow_pref", "survey-analysis", "respondend-attributes.Rdata"))
 # load(file = here("flow_pref", "survey-analysis", "flow-pref-data.Rdata"))
 respondent.attributes <-
-  readRDS(file = here("private_data", "respondent-attributes_20200630.RDS"))
+  readRDS(file = here::here("private_data", "respondent-attributes_20200630.RDS"))
 flowpref.dat <- 
-  readRDS(file = here("private_data", "flow-pref-data_20200630.RDS"))
+  readRDS(file = here::here("private_data", "flow-pref-data_20200630.RDS"))
 
 # Commented code moved to poudre_survey_clean_format
 # Can be deleted
