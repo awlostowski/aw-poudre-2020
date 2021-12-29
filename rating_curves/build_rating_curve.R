@@ -27,7 +27,7 @@ remove(list = ls())  # clear all workspace variables
 cat("\014")          # clear command line
 
 ## load packages
-library(here)yt
+library(here)
 library(tidyverse)
 library(minpack.lm)
 library(nlstools)
@@ -182,3 +182,40 @@ path <- here::here("rating_curves")
 logger::log_info("saving a plot of Pineview rating curve at {path}")
 ggsave(paste0(path, "/pineview_rating.png"))
 
+# =======================================
+# Evaluate relationship between flows at Poudre Park and Rustic
+
+rustic.filename <- "rustic_flow.RDS"
+rustic.flow <- CheckLoad(gagedata.path, rustic.filename)
+
+# take hourly average of flow data at Rustic
+flow.rustic.dly <- rustic.flow %>% 
+  group_by(date) %>% 
+  summarize(
+    flow_cfs = mean(flow_cfs, na.rm = T)
+  )
+
+flow.poudre.dly <- gage.flow %>%
+  group_by(date) %>%
+  summarize(
+    flow_cfs = mean(flow_cfs, na.rm = T)
+  )
+
+# join Poudre Park and Rustic flows
+site.compare <- inner_join(flow.rustic.dly, flow.poudre.dly, by = "date") %>% 
+  rename(Rustic = flow_cfs.x, Poudre.Park = flow_cfs.y) %>%
+  select(date, Poudre.Park, Rustic) %>%
+  mutate(month = month(date))
+
+compare.plot <- ggplot() +
+  geom_point(data = site.compare, aes(x = Poudre.Park, y = Rustic, color = date)) +
+  labs( 
+    y = "Flow at Rustic (cfs)",
+    x= "Flow at Poudre Park (cfs)"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 14),
+    axis.title  = element_text(size = 14)
+  )
+print(compare.plot)
