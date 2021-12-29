@@ -30,11 +30,6 @@ stage <- rock_report %>%
       str_detect(title, regex('noon', ignore_case = T)) == TRUE ~ "12:00",
       str_detect(title, regex('noon', ignore_case = T)) == FALSE ~ time
     )
-   # pm = unglue::unglue_vec(
-   #    title, 
-   #    patterns = c("{}@ {x}pm{}", "{}@ {x}am{}", "{}@ {x} pm{}", "{}@ {x} am{}",
-   #                 "{x}pm{}", "{x}am{}", "{x} pm{}", "{x} am{}")
-   #    )
   ) %>%
   mutate(
     time = format(

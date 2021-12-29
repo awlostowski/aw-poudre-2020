@@ -8,21 +8,21 @@ library(rvest)
 library(magrittr)
 library(stringr)
 library(stringi)
-# install.packages("logger")
 library(logger)
 
 
 
 # ---- function for scraping a single page ----
+
+# scrape a page from  Poudre Rock Report
 scrape_page <- function(n) {
+  
   logger::log_info("Scraping page {n}")
-  # logger::log_info("Scraping page {page[8]}")
   
   site <- paste0(
     "http://www.poudrerockreport.com/category/flows/page/",
     as.character(n)
-    # "http://www.poudrerockreport.com/category/flows/page/",
-    # as.character(pages[8])
+    # "http://www.poudrerockreport.com/category/flows/page/", as.character(page[8])
   )
   
   articles <- rvest::read_html(site) %>%
@@ -85,37 +85,52 @@ scrape_page <- function(n) {
   }
   # remove special characters EXCEPT period
   title_content <- stringi::stri_replace_all_fixed(
-                          titles, 
-                          c("{", "}", "~", "[", "]", "(", ")","!", "@", "<", ">"),
-                          c("", "", "", "", "","", "","", "", "", ""),
-                          vectorize_all = FALSE
-                          )
+    titles, 
+    c("{", "}", "~", "[", "]", "(", ")","!", "@", "<", ">"),
+    c("", "", "", "", "","", "","", "", "", ""),
+    vectorize_all = FALSE
+  )
   
   pine_stage <- str_extract(title_content, "\\d+\\.*\\d*") %>% 
     as.numeric()
   
   # convert post date to Date class
-  date = as.Date(dates, format = "%B %d, %Y")
+  date   <- lubridate::mdy(dates)
+  # date = as.Date(dates, format = "%B %d %Y")
   
   data.frame(
-      title        = titles,
-      date         = date,
-      Pineview     = pine_stage,
-      Hewlett      = hewlett_stage,
-      Rustic       = rustic_stage,
-      page         = n,   
-      categories   = categories
-      ) %>% 
-  mutate( 
+    title        = titles,
+    date         = date,
+    pineview     = pine_stage,
+    hewlett      = hewlett_stage,
+    rustic       = rustic_stage,
+    page         = n,   # page         = 187,
+    categories   = categories
+  ) %>% 
+    mutate( 
       time = format( # extract 4 digit military time from title and convert to hour, minutes
         as.POSIXct(
           sprintf("%04s", stri_extract_last(title, regex = "\\d{4}")),
           format  = "%H%M",
           origin  = "1970-01-01",
           tz      = "UTC"
-          ), "%H:%M"
-        )
+        ), "%H:%M"
       )
+    ) %>% 
+    mutate(
+      time = case_when(
+        str_detect(title, regex('noon', ignore_case = T)) == TRUE ~ "12:00",
+        str_detect(title, regex('noon', ignore_case = T)) == FALSE ~ time
+      )
+    ) %>%
+    mutate(
+      time = format(
+        round(
+          strptime(paste("2001-01-01", time), format="%Y-%m-%d %H:%M"), 
+          units="hours"), 
+        format="%H:%M")) %>% 
+    mutate(datetime = as.POSIXct(paste(as.character(date), time),  format = "%Y-%m-%d %H:%M")) %>% 
+    dplyr::relocate(title, categories, page, date, time, datetime, pineview, hewlett, rustic)
 }
 
 # ---- Get max page from poudrerockreport.com ----
