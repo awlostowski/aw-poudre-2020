@@ -93,3 +93,103 @@ scrape_page <- function(n) {
     categories   = categories
   )
 }
+
+# Function that retrieves flow data frame https://opendata.fcgov.com/ by sensor name and returns a tidy dataframe.
+get_flow_data <- function(sensor_name) {
+  
+  url <- "https://opendata.fcgov.com/resource/f5as-vvbj.json?sensor_name="
+  
+  sensor_url <- paste0(url, gsub(" ", "%20", sensor_name))
+  
+  flow_data <- RSocrata::read.socrata(
+    url = sensor_url                    # 'https://opendata.fcgov.com/resource/f5as-vvbj.json?sensor_name=Poudre%20Park'
+  )
+  
+  flow_data <- flow_data %>% 
+    dplyr::select(sensor_name, timestamp, stage_ft, flow_cfs) %>% 
+    dplyr::mutate(
+      flow_cfs   = as.numeric(flow_cfs),
+      stage_ft   = as.numeric(stage_ft),
+      date       = lubridate::ymd(as.Date(timestamp)),
+      time       = format(timestamp, "%H:%M")
+    ) %>% 
+    dplyr::select(sensor_name, date, time, stage_ft, flow_cfs) 
+}
+
+# Function for calling CDSS API for Telemetry station data
+get_station_data <- function(
+  type = c("telemetrytimeseriesraw", "telemetrytimeserieshour",
+           "telemetrytimeseriesday", "telemetryratingtable"), 
+  abbrev,
+  param = c("DISCHRG", "GAGE_HT", "AIRTEMP"), 
+  start_date, 
+  end_date
+) {
+  
+  # base URL for CDSS Telemetry station API 
+  base <- "https://dwr.state.co.us/Rest/GET/api/v2/telemetrystations/"
+  
+  # format start and end date for URL 
+  start <- gsub("-", "%2F", start_date)
+  end <- gsub("-", "%2F", end_date)
+  
+  # create specific URL w/ WDID to call API
+  url <- paste0(base, type, "/?dateFormat=spaceSepToSeconds&abbrev=", abbrev, "&endDate=", end, "&parameter=", param, "&startDate=", start)
+  
+  # GET request to CDSS API
+  cdss_api <- httr::GET(url) %>%
+    content(as = "text") %>% 
+    fromJSON() %>% 
+    bind_rows() 
+  
+  # Tidy data 
+  station_data <- cdss_api$ResultList %>% 
+    dplyr::select(
+      station  = abbrev,
+      date     = measDate,
+      parameter, 
+      value    = measValue
+    ) %>% 
+    mutate(
+      time     = substr(date, 12, 19),
+      date     = as.POSIXct(paste(as.character(substr(date, 0, 10)), time),
+                            format = "%Y-%m-%d %H:%M")
+    ) %>% 
+    dplyr::relocate(station, date, time, parameter, value)
+  
+}
+
+
+# Function for calling CDSS API for Telemetry station data
+get_structure_data <- function(
+  type = c("divrecday", "divrecmonth", "divrecyear", "stagevolume"),
+  wdid
+) {
+  # base URL for CDSS diversion records API 
+  base <- "https://dwr.state.co.us/Rest/GET/api/v2/structures/divrec/"
+  
+  # create specific URL w/ WDID to call API
+  url <- paste0(base, type, "/?dateFormat=spaceSepToSeconds&wcIdentifier=*Total+(Diversion)*&wdid=", wdid)
+  
+  # GET request to CDSS API
+  cdss_api <- httr::GET(url) %>%
+    content(as = "text") %>% 
+    fromJSON() %>% 
+    bind_rows() 
+  
+  # Tidy data 
+  structure_data <- cdss_api$ResultList %>%  
+    dplyr::select(
+      wdid,
+      date     = dataMeasDate,
+      value    = dataValue,
+      unit     = measUnits
+    ) %>% 
+    mutate(
+      time     = substr(date, 12, 19),
+      date     = as.POSIXct(paste(as.character(substr(date, 0, 10)), time),  
+                            format = "%Y-%m-%d %H:%M")
+    ) %>% 
+    dplyr::relocate(wdid, date, time, unit, value)
+  
+}
