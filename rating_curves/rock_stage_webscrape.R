@@ -198,8 +198,7 @@ last_page <- rvest::html_element(home_page, ".archive-pagination") %>%
   as.integer()
 
 # sequence of all available page numbers
-# pages <- seq_len(last_page)
-pages <- seq_len(2)
+pages <- seq_len(last_page)
 
 # lapply scrape_page() function across each page
 content <- lapply(
