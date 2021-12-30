@@ -71,15 +71,16 @@ CheckLoad <- function(path, filename) {
 # =======================================
 # Read-in stage and flow data
 
-#*****
-# TODO(awlostowski): Look for data, if it doesn't exist make it/get it
-#*****
-
 # Read in Rock Report stage observations at Pineview
 rockreport.path     <- here::here("data","rock_report")
 rockreport.filename <- "stage_poudre_rock_report.RDS"
 stage          <- CheckLoad(rockreport.path, rockreport.filename)
 if (stage == FALSE) {
+  
+  #*****
+  # TODO(awlostowski): automatically call web-scraping.
+  #*****
+  
   logger::error('Please run rock_stage_webscrape.R to get stage data')
   stop()
 }
