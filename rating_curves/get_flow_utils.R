@@ -17,9 +17,6 @@
 ## ---------------------------
 ##
 ## Notes:
-## TODO - build exceptions to catch faulty URLs or no data returns
-## TODO - return and process multiple pages of data. 1 pg limit of 50K records
-## TODO - add start/end dates as input args to getCDSSDiversionData
 ##
 ##------------------------------------------------------------------------------
 
@@ -127,13 +124,16 @@ getCDSSDiversionFlow <- function(wdid, save.data = FALSE) {
   }
   
   if (save.data) {
-   do_stuff = 'nothing'  
-  #   # save data to disk as RDS
-  #   path <- here::here()
-  #   filename <- paste0("WDID",wdid,
-  #                      "structure_flow.RDS")
-  #   saveRDS(station.data, paste0(path, "/", filename))
-  #   
+    
+    # save data to disk as RDS
+    path <- here::here("data", "gauge")
+    filename <- paste0("wdid_",wdid,
+                       "_structure_flow.RDS")
+    logger::log_info(
+      'saving WDID:{wdid} diversion flow data to {path} as {filename}'
+    )
+    saveRDS(all_data, paste0(path, "/", filename))
+
   }
   
   return(as_tibble(all_data))
@@ -144,7 +144,8 @@ getCDSSDiversionFlow <- function(wdid, save.data = FALSE) {
 GetCDSSStationFlow <- function(
   site_abbrev,
   start_date = '01-01-1800', 
-  end_date = '01-01-2050'
+  end_date = '01-01-2050',
+  save.data = FALSE
 ) {
   
   # 
@@ -256,12 +257,26 @@ GetCDSSStationFlow <- function(
     
   }
   
+  if (save.data) {
+    
+    # save data to disk as RDS
+    path <- here::here("data", "gauge")
+    filename <- paste0(site_abbrev,
+                       "_station_flow.RDS")
+    
+    logger::log_info(
+      'saving {site_abbrev} station flow data to {path} as {filename}'
+      )
+    saveRDS(all_data, paste0(path, "/", filename))
+    
+  }
+  
   return(as_tibble(all_data))
   
 }
 
 #===========================================
-getOpenDataFlow <- function(sensor_name) {
+getOpenDataFlow <- function(sensor_name, save.data = FALSE) {
   # 
   # Retrieve flow DataFrame from https://opendata.fcgov.com/ by sensor name
   #
@@ -307,6 +322,22 @@ getOpenDataFlow <- function(sensor_name) {
     dplyr::select(station, datetime, date, hour,
                   flow, flow_unit, source)
   
+  if (save.data) {
+    
+    # save data to disk as RDS
+    path <- here::here("data", "gauge")
+    filename <- paste0(
+      gsub(" ", "_", tolower(sensor_name)),
+      "_flow.RDS"
+    )
+    
+    logger::log_info(
+      'saving {sensor name} station flow data to {path} as {filename}'
+    )
+    saveRDS(all_data, paste0(path, "/", filename))
+    
+  }
+  
   return(flow_data)
 }
 
@@ -315,8 +346,8 @@ getOpenDataFlow <- function(sensor_name) {
 
 # # Example function uses
 
-# get diversion record at Poudre Valley Canal
-struct_flow <- getCDSSDiversionFlow(wdid = '0300907')
+# # get diversion record at Poudre Valley Canal
+# struct_flow <- getCDSSDiversionFlow(wdid = '0300907', save.data = TRUE)
 
 # # get flow record at Canyon Mouth gage (CLAFTCCO) from March 2019 onward
 # station_flow <- GetCDSSStationFlow(
