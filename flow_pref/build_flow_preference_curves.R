@@ -37,6 +37,8 @@ cat("\014")          # clear command line
 library(here)
 library(tidyverse)
 library(logger)
+library(cowplot); theme_set(theme_cowplot())
+library(rootSolve) # for computing flow preference thresholds
 
 # Suppress summarise info
 options(dplyr.summarise.inform = FALSE)
