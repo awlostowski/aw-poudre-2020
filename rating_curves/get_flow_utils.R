@@ -18,7 +18,7 @@
 ##
 ## Notes:
 ## TODO - build exceptions to catch faulty URLs or no data returns
-## TODO - figure out how to return multiple pages of data. Now limited to 50K records
+## TODO - return and process multiple pages of data. 1 pg limit of 50K records
 ## TODO - add start/end dates as input args to getCDSSDiversionData
 ##
 ##------------------------------------------------------------------------------
