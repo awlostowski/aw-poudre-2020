@@ -132,7 +132,7 @@ poudre_valley_canal <- get_structure_data(
                                         )
 
 # get flow data for North Fork Poudre river
-poudre_canyon_mouth <- get_station_data(
+north_fork_poudre <- get_station_data(
                                         type        = "telemetrytimeserieshour",
                                         abbrev      = "CLANSECO",
                                         param       = "DISCHRG",
@@ -145,6 +145,14 @@ poudre_valley_canal <- get_structure_data(
                                         type        = "divrecday",
                                         wdid        = "0300905"
                                       )
+# get flow data for North Fork Poudre river
+muncanco <- get_station_data(
+                                type        = "telemetrytimeserieshour",
+                                abbrev      = "MUNCANCO",
+                                param       = "DISCHRG",
+                                start_date  = "03-22-2019",
+                                end_date    = "12-29-2021"
+                              )
 
 # get flow data at Northern Poudre Supply Canal
 poudre_park         <- get_flow_data(sensor_name = "Poudre Park")
@@ -178,7 +186,7 @@ pp_pcm <- left_join(
 # Timeseries of flow at Poudre Canyon Mouth (red) & Poudre Park 
 ggplot() +
   geom_point(data = pp_pcm, aes(x = datetime, y = flow_pp, col = "Poudre Park")) +
-  geom_point(data = pp_pcm, aes(x = datetime, y = flow_pcm, col = "Poudre Canyon Mouth")) +
+  geom_point(data = pp_pcm, aes(x = datetime, y = flow_pcm, col = "Poudre Canyon Mouth"), alpha = 0.2) +
   labs(
     title  = "Flow at Poudre Park and Poudre Canyon Mouth",
     y      = "Flow (cfs)",
@@ -198,15 +206,16 @@ ggplot() +
 
 # Poudre park flow vs. Poudre Canyon mouth flow
 ggplot() +
-  geom_point(data = pp_pcm, aes(x = flow_pp, y = flow_pcm)) +
+  geom_point(data = pp_pcm, aes(x = flow_pcm, y = flow_pp)) +
+  # geom_point(data = pp_pcm, aes(x = flow_pp, y = flow_pcm)) +
   labs(
     title = "Flow at Poudre Park vs Poudre Canyon Mouth",
     y     = "Poudre Canyon mouth flow (cfs)",
     x     = "Poudre Park flow (cfs)"
   ) +
   theme_bw() +
-  scale_x_continuous(breaks = seq(0, 3000, by = 200)) +
-  scale_y_continuous(breaks = seq(0, 1000, by = 200)) +
+  # scale_x_continuous(breaks = seq(0, 3000, by = 200)) +
+  # scale_y_continuous(breaks = seq(0, 1000, by = 200)) +
   theme(
     plot.title = element_text(size = 14, face = "bold"),
     axis.title = element_text(size = 12, face = "bold"),
@@ -232,6 +241,13 @@ pp_pcm_daily <- pp_pcm %>%
     flow_pp  = mean(flow_pp, na.rm = T)
     )
 
+mun <- muncanco %>% 
+  tibble() %>% 
+  group_by(date) %>% 
+  summarise(
+    flow_mun = mean(value, na.rm = T)
+  )
+
 # Join Poudre valley canal w/ Poudre Canyon mouth flow
 poudre_aggregate <- pvc %>% 
   dplyr::select(date, flow_pvc = value) %>% 
@@ -239,16 +255,20 @@ poudre_aggregate <- pvc %>%
       pp_pcm_daily,
       by = "date"
     ) %>%
+  left_join(
+    dplyr::select(mun, date, flow_mun),
+    by = "date"
+  ) %>%
   mutate(
-      flow_agg = flow_pvc + flow_pcm
-        )
+    flow_agg = flow_pvc + flow_pcm + flow_mun
+  )
 
 # Plot Poudre Park + Poudre Canyon Mouth + Poudre Valley Canal + Sum of Poudre Canyon Mouth + Poudre Valley Canal
 ggplot() +
   geom_point(data = poudre_aggregate, aes(x = date, y = flow_pvc,  col = "Poudre Valley Canal")) + 
   geom_point(data = poudre_aggregate, aes(x = date, y = flow_pcm,  col = "Poudre Canyon Mouth")) + 
   geom_point(data = poudre_aggregate, aes(x = date, y = flow_pp,  col = "Poudre Park")) + 
-  geom_point(data = poudre_aggregate, aes(x = date, y = flow_agg,  col = "Poudre Canyon Mouth + Poudre Valley Canal")) +
+  geom_point(data = poudre_aggregate, aes(x = date, y = flow_agg,  col = "Poudre Canyon Mouth + Poudre Valley Canal + Muncanco")) +
   # geom_point(data = pp_pcm, aes(x = datetime, y = flow_pcm, col = "Poudre Canyon Mouth")) +
   # geom_point(data = pp_pcm, aes(x = datetime, y = flow_pcm, col = "Poudre Canyon Mouth")) +
   labs(
@@ -267,15 +287,44 @@ ggplot() +
     axis.text  = element_text(size = 11),
     legend.text = element_text(size = 12)
   )
+ggplot() +
+  geom_point(data = poudre_aggregate, 
+             aes(x = flow_agg, y = flow_pp)
+             ) +
+  labs(
+    title  = "Poudre Park vs. Canyon mouth + Poudre Valley Canal",
+    y      = "Poudre Park",
+    x      = "Canyon mouth + Poudre Valley Canal",
+    colour = " "
+  ) +
+  theme_bw() +
+  # scale_colour_manual(values = c("blue", "red", "black", "green")) +
+  # scale_y_continuous(breaks = seq(0, 3000, by = 500)) +
+  # scale_x_datetime(date_breaks = "4 months") +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 11),
+    legend.text = element_text(size = 12)
+  )
+
+# =====================================================
+# ---- Add Muncanco ----
+# =====================================================
 
 
+muncanco <- tibble(muncanco)
 
 
-
-
-
-
-
+# Join Poudre valley canal w/ Poudre Canyon mouth flow
+poudre_aggregate <- poudre_aggregate %>% 
+  left_join(
+    dplyr::select(muncanco, date, flow_mun = value),
+    by = "date"
+  ) %>%
+  mutate(
+    flow_agg = flow_pvc + flow_pcm
+  )
 
 
 
