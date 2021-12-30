@@ -37,7 +37,8 @@ library(logger)
 ##------------------------------------------------------------------------------
 ## Function definitions
 
-getCDSSDiversionFlow <- function(wdid) {
+#===========================================
+getCDSSDiversionFlow <- function(wdid, save.data = FALSE) {
   
   # 
   # Get daily diversion flow data from the CDSS REST service.
@@ -46,44 +47,100 @@ getCDSSDiversionFlow <- function(wdid) {
   #   wdid (chr): unique structure identification code
   #
   # Returns:
-  #   structure_data (tibble): tidy tibble of hourly flow record
+  #   all_data (tibble): tidy tibble of hourly flow record
   
   # base URL for CDSS diversion records API 
   base <- "https://dwr.state.co.us/Rest/GET/api/v2/structures/divrec/"
-
-  url <- paste0(base, 
-                "divrecday/?dateFormat=spaceSepToSeconds&",
-                "wcIdentifier=*Total+(Diversion)*&wdid=", wdid)
   
-  logger::log_info(
-    "Downloading WDID:{wdid} diversion flow data from CDSS API..."
-  )
+  # maximum records per page
+  pageSize = 50000
   
-  # GET request to CDSS API
-  cdss_api <- httr::GET(url) %>%
-    content(as = "text") %>% 
-    fromJSON() %>% 
-    bind_rows() 
+  # initialize empty dataframe to store data from multiple pages
+  all_data = data.frame()
   
-  # Tidy data 
-  structure_data <- cdss_api$ResultList %>%  
-    dplyr::select(
-      wdid,
-      datestring = dataMeasDate,
-      flow       = dataValue,
-      unit       = measUnits
-    ) %>% 
-    mutate(
-      datetime = lubridate::as_datetime(datestring),
-      date     = lubridate::as_date(datestring),
-      source   = 'CDSS'
-    ) %>% 
-    dplyr::select(wdid, datetime, date, flow, unit, source)
+  # initialize pageInex
+  pageIndex = 1
   
-  return(as_tibble(structure_data))
+  # grab data while there are more pages of data to grab
+  more_pages = T
+  while (more_pages) {
+    
+    url <- paste0(base, 
+                  "divrecday/?dateFormat=spaceSepToSeconds&",
+                  "wcIdentifier=*Total+(Diversion)*&wdid=", wdid,
+                  "&pageSize=", pageSize,
+                  "&pageIndex=", pageIndex)
+    
+    logger::log_info(
+      "Downloading WDID:{wdid} diversion flow data from CDSS API..."
+    )
+    
+    # GET request to CDSS API
+    tryCatch( 
+      {
+        cdss_api <- httr::GET(url) %>%
+          content(as = "text") %>% 
+          fromJSON() %>% 
+          bind_rows() 
+      },
+      error = function(e) {
+        logger::log_error(
+          'An error was encountered when trying to download diversion flow data at WDID:{wdid}'
+        )
+        logger::log_error(
+          'Perhaps the URL address is incorrect OR there are no data available.'
+        )
+        logger::log_error('Here is the URL address that was queried:')
+        logger::log_error('{flow_url}')
+        logger::log_error('And, here is the orriginal error message:')
+        logger::log_error('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+        logger::log_error(message(e))
+        stop()
+      }
+    )
+    
+    # Tidy data 
+    structure_data <- cdss_api$ResultList %>%  
+      dplyr::select(
+        wdid,
+        datestring = dataMeasDate,
+        flow       = dataValue,
+        unit       = measUnits
+      ) %>% 
+      mutate(
+        datetime = lubridate::as_datetime(datestring),
+        date     = lubridate::as_date(datestring),
+        source   = 'CDSS'
+      ) %>% 
+      dplyr::select(wdid, datetime, date, flow, unit, source)
+    
+    # bind data from this page
+    all_data <- rbind(all_data, structure_data)
+    
+    # determine if thre are additional pages of data to get.
+    if (nrow(structure_data) < pageSize) {
+      more_pages = FALSE
+    } else {
+      pageIndex = pageIndex + 1
+    }
+    
+  }
+  
+  if (save.data) {
+   do_stuff = 'nothing'  
+  #   # save data to disk as RDS
+  #   path <- here::here()
+  #   filename <- paste0("WDID",wdid,
+  #                      "structure_flow.RDS")
+  #   saveRDS(station.data, paste0(path, "/", filename))
+  #   
+  }
+  
+  return(as_tibble(all_data))
   
 }
 
+#===========================================
 GetCDSSStationFlow <- function(
   site_abbrev,
   start_date = '01-01-1800', 
@@ -107,56 +164,103 @@ GetCDSSStationFlow <- function(
   #     - Defaults to '01-01-2050', thereby removing upper time limit
   #
   # Returns:
-  #   station_data (tibble): tidy tibble of hourly flow record
+  #   structure_data (tibble): tidy tibble of hourly flow record
   
   
   # base URL for CDSS Telemetry station API 
   base <- paste0("https://dwr.state.co.us/Rest/GET/api/",
                  "v2/telemetrystations/telemetrytimeserieshour")
   
+  # maximum records per page
+  pageSize = 50000
+  
   # format start and end date for URL 
   start <- gsub("-", "%2F", start_date)
   end <- gsub("-", "%2F", end_date)
   
-  # create specific URL w/ WDID to call API
-  flow_url <- paste0(base,
-                "/?dateFormat=spaceSepToSeconds&abbrev=", 
-                paste(site_abbrev, collapse = '%2C+'), 
-                "&endDate=", end, 
-                "&parameter=DISCHRG", 
-                "&startDate=", start)
+  # initialize empty dataframe to store data from multiple pages
+  all_data = data.frame()
   
-  logger::log_info(
-    "Downloading {site_abbrev} station flow data from CDSS API..."
-  )
+  # initialize pageInex
+  pageIndex = 1
   
-  # GET request to CDSS API
-  cdss_api <- httr::GET(flow_url) %>%
-    content(as = "text") %>% 
-    jsonlite::fromJSON() %>% 
-    bind_rows() 
+  # grab data while there are more pages of data to grab
+  more_pages = T
+  while (more_pages) {
+    
+    # create specific URL w/ WDID to call API
+    flow_url <- paste0(
+      base,
+      "/?dateFormat=spaceSepToSeconds&abbrev=", 
+      paste(site_abbrev, collapse = '%2C+'), 
+      "&endDate=", end, 
+      "&parameter=DISCHRG", 
+      "&startDate=", start,
+      "&pageSize=", pageSize,
+      "&pageIndex=", pageIndex)
+    
+    logger::log_info(
+      "Downloading {site_abbrev} station flow data from CDSS API, page {pageIndex}..."
+    )
+    
+    # GET request to CDSS API - catch standard errors, return custom
+    tryCatch( 
+      {
+        cdss_api <- httr::GET(flow_url) %>%
+          content(as = "text") %>% 
+          jsonlite::fromJSON() %>% 
+          bind_rows() 
+      },
+      error = function(e) {
+        logger::log_error(
+          'An error was encountered when trying to download flow data at {site_abbrev}'
+          )
+        logger::log_error(
+          'Perhaps the URL address is incorrect OR there are no data available.'
+          )
+        logger::log_error('Here is the URL address that was queried:')
+        logger::log_error('{flow_url}')
+        logger::log_error('And, here is the orriginal error message:')
+        logger::log_error('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+        logger::log_error(message(e))
+        stop()
+      }
+      )
+
+    # Tidy data 
+    station_data <- cdss_api$ResultList %>% 
+      dplyr::select(
+        station    = abbrev,
+        datestring = measDate,
+        flow       = measValue,
+        flow_unit  = measUnit
+      ) %>% 
+      mutate(
+        datetime   = lubridate::as_datetime(datestring),
+        date       = lubridate::as_date(datestring),
+        hour       = lubridate::hour(datetime),
+        source     = 'CDSS'
+      ) %>% 
+      dplyr::select(station, datetime, date, hour,
+                    flow, flow_unit, source)
+    
+    # bind data from this page
+    all_data <- rbind(all_data, station_data)
+    
+    # determine if thre are additional pages of data to get.
+    if (nrow(station_data) < pageSize) {
+      more_pages = FALSE
+    } else {
+      pageIndex = pageIndex + 1
+    }
+    
+  }
   
-  # Tidy data 
-  station_data <- cdss_api$ResultList %>% 
-    dplyr::select(
-      station    = abbrev,
-      datestring = measDate,
-      flow       = measValue,
-      flow_unit  = measUnit
-    ) %>% 
-    mutate(
-      datetime   = lubridate::as_datetime(datestring),
-      date       = lubridate::as_date(datestring),
-      hour       = lubridate::hour(datetime),
-      source     = 'CDSS'
-    ) %>% 
-    dplyr::select(station, datetime, date, hour,
-                  flow, flow_unit, source)
-  
-  return(as_tibble(station_data))
+  return(as_tibble(all_data))
   
 }
 
+#===========================================
 getOpenDataFlow <- function(sensor_name) {
   # 
   # Retrieve flow DataFrame from https://opendata.fcgov.com/ by sensor name
@@ -210,15 +314,16 @@ getOpenDataFlow <- function(sensor_name) {
 ## Executed statements
 
 # # Example function uses
-# 
-# # get diversion record at Poudre Valley Canal
-# struct_flow <- getCDSSDiversionFlow(wdid = '0300907')
-# 
+
+# get diversion record at Poudre Valley Canal
+struct_flow <- getCDSSDiversionFlow(wdid = '0300907')
+
 # # get flow record at Canyon Mouth gage (CLAFTCCO) from March 2019 onward
 # station_flow <- GetCDSSStationFlow(
 #   site_abbrev = 'CLAFTCCO',
-#   start_date = '03-01-2019',
+#   start_date = '01-01-2020', 
+#   end_date = '01-01-2021'
 #   )
-# 
+
 # # get flow record at Forc Collins Poudre Park gage
 # foco_flow <- getOpenDataFlow("Poudre Park")
