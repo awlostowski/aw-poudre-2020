@@ -23,6 +23,9 @@
 remove(list = ls())  # clear all workspace variables
 cat("\014")          # clear command line
 
+# Suppress summarise info
+options(dplyr.summarise.inform = FALSE)
+
 ## load packages
 library(here)
 library(tidyverse)
@@ -332,9 +335,9 @@ getOpenDataFlow <- function(sensor_name, save.data = FALSE) {
     )
     
     logger::log_info(
-      'saving {sensor name} station flow data to {path} as {filename}'
+      'saving {sensor_name} station flow data to {path} as {filename}'
     )
-    saveRDS(all_data, paste0(path, "/", filename))
+    saveRDS(flow_data, paste0(path, "/", filename))
     
   }
   
