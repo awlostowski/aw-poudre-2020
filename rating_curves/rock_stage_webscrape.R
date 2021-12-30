@@ -134,16 +134,16 @@ scrape_page <- function(n) {
   date = as.Date(dates, format = "%B %d, %Y")
   
   # pack scraped data into a dataframe
-  data.frame(
+  rock.data <- data.frame(
       title        = titles,
       date         = date,
-      Pineview     = pine_stage,
-      Hewlett      = hewlett_stage,
-      Rustic       = rustic_stage,
+      pineview     = pine_stage,
+      hewlett      = hewlett_stage,
+      rustic       = rustic_stage,
       page         = n,   
       categories   = categories
-      ) %>% 
-  mutate( 
+      ) %>%
+    mutate(
       # extract 4 digit military time from title and convert to hour, minutes
       time = format( 
         as.POSIXct(
@@ -153,7 +153,32 @@ scrape_page <- function(n) {
           tz      = "UTC"
           ), "%H:%M"
         )
-      )
+      ) %>%
+    mutate(
+      time = case_when(
+        str_detect(title, regex('noon', ignore_case = T)) == TRUE ~ "12:00",
+        str_detect(title, regex('noon', ignore_case = T)) == FALSE ~ time
+        )
+      ) %>%
+    mutate(
+      time = format(
+        round(
+          strptime(paste("2001-01-01", time), format="%Y-%m-%d %H:%M"), 
+          units="hours"), 
+        format="%H:%M")
+      ) %>%
+    mutate(
+      datetime = lubridate::as_datetime(
+        paste(date, time), 
+        format="%Y-%m-%d %H:%M"
+        ), 
+      hour = lubridate::hour(datetime)
+    ) %>%
+    filter(is.na(time) == F) %>%
+    dplyr::select(-time) %>%
+    dplyr::relocate(title, categories, page, datetime, date, hour, pineview, hewlett, rustic)
+  
+  return(rock.data)
 }
 
 ##------------------------------------------------------------------------------
@@ -187,7 +212,7 @@ full_content <- bind_rows(content)
 # QA/QC scraped stage data
 maxDepth = 10 # upper limit depth threshold, feet
 full_content <- full_content %>%
-  filter(Pineview <= maxDepth)
+  filter(pineview <= maxDepth)
   
 # save scraped data to local path
 path <- here::here("data", "rock_report")
@@ -195,15 +220,11 @@ filename <- "stage_poudre_rock_report.RDS"
 logger::log_info("saving scraped RockReport data to {path} as {filename}")
 saveRDS(full_content, paste0(path, "/", filename))
 
-# Plot scraped stage data at Pine View
+# Plot scraped stage data at Pineview
 rock_stage <- readRDS(paste0(path, "/", filename))
 
-rock_stage <- rock_stage %>% 
-  filter(is.na(time) == F) %>%
-  mutate(datetime = lubridate::ymd_hm(paste(date, time)))
-
 ggplot() +
-  geom_point(data = rock_stage, aes(x = datetime, y = Pineview)) +
+  geom_point(data = rock_stage, aes(x = datetime, y = pineview)) +
   labs( 
     title = "Pineview Stage from Poudre Rock Report",
     y = "Stage (ft)",
