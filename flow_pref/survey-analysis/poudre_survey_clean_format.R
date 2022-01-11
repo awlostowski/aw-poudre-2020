@@ -7,15 +7,17 @@
 # Load packages
 library(tidyverse)
 library(reshape2)
+library(here)
 
 ################################################################################
 # Poudre Survey respondent attributes
 
 # Import raw survey data and headers
-headers <- unlist(strsplit(readLines("private_data/poudre_survey_headers.csv"), 
-                           ","))
-survey <- read_csv("private_data/poudre_survey_20200626.csv",
-                   col_names = headers, trim_ws = TRUE )
+haeder_file <- here::here('private_data','poudre_survey_headers.csv')
+headers <- unlist(strsplit(readLines(haeder_file), ","))
+
+survey_file <- here::here('private_data','poudre_survey_20220105.csv')
+survey <- read_csv(survey_file, col_names = headers, trim_ws = TRUE )
 
 # Remove all personal
 # and unnecessary info
@@ -124,7 +126,7 @@ survey %>%
          category, visit_freq, report_confidence, more_visits_pwp, visit_n, 
          trip_length_miles) %>% 
   saveRDS(object = .,
-          file = "private_data/respondent-attributes_20200630.RDS")
+          file = "private_data/respondent-attributes_20220105.RDS")
 
 
 ################################################################################
@@ -188,7 +190,7 @@ for(i in 1:length(reach_codes$code)){
 
 # Export the flow preference data
 saveRDS(object = flowpref.dat,
-        file = "private_data/flow-pref-data_20200630.RDS")
+        file = "private_data/flow-pref-data_20220105.RDS")
 
 
 ################################################################################
@@ -258,7 +260,7 @@ econ_survey <- econ_survey %>%
 
 # Export the econ data
 saveRDS(object = econ_survey,
-        file = "private_data/econ_survey_20200630.RDS")
+        file = "private_data/econ_survey_20220105.RDS")
 
 
 # SUmmarize the survey data
