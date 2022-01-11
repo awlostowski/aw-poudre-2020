@@ -75,8 +75,9 @@ site.gages <- list(
 )
 
 # load flow preference data
-flow_pref <- read_csv(here::here('private_data','flow_pref_by_reach.csv'))
+flow_pref <- read_csv(here::here('data','flow_pref_by_reach.csv'))
 
+# TODO: look for these data to be saved to disk first, before downloading and saving.
 # Retrieve historical flow observations and models
 flow.usgs <- dataRetrieval::readNWISdv(
   siteNumbers = '06752260', 
