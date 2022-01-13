@@ -14,7 +14,8 @@ library(reshape2)
 # Import raw survey data and headers
 headers <- unlist(strsplit(readLines("private_data/poudre_survey_headers.csv"), 
                            ","))
-survey <- read_csv("private_data/poudre_survey_20200626.csv",
+
+survey <- read_csv(here::here("private_data/poudre_survey_20220105.csv"),
                    col_names = headers, trim_ws = TRUE )
 
 # Remove all personal
@@ -35,28 +36,37 @@ survey <- survey %>%
 # Refactor the city data to be homogenous
 survey <- survey %>% 
   mutate(city = toupper(city)) %>% 
-  mutate(city = case_when(city == "BOLDER" ~ "BOULDER",
-                          city == "CB" ~ "CRESTED BUTTE",
-                          city == "FT COLLINS" ~ "FORT COLLINS",
-                          city == "FORT COLLINA" ~ "FORT COLLINS",
-                          TRUE ~ city))
+  mutate(
+    city = case_when(
+      city == "BOLDER"       ~ "BOULDER",
+      city == "CB"           ~ "CRESTED BUTTE",
+      city == "FT COLLINS"   ~ "FORT COLLINS",
+      city == "FORT COLLINA" ~ "FORT COLLINS",
+      TRUE ~ city)
+    )
 
 # Refactor the state data to be homogenous and use two-letter abbrev
 survey <- survey %>% 
   mutate(state = toupper(state)) %>% 
-  mutate(state = case_when(str_detect(string = state, pattern = "COLO")~ "CO",
-                           str_detect(string = state, pattern = "RTH CAR")~ "NC",
-                           str_detect(string = state, pattern = "OREG")~ "OR",
-                           str_detect(string = state, pattern = "WYOM")~ "WY",
-                           TRUE ~ state))
+  mutate(
+    state = case_when(
+      str_detect(string = state, pattern = "COLO")    ~ "CO",
+      str_detect(string = state, pattern = "RTH CAR") ~ "NC",
+      str_detect(string = state, pattern = "OREG")    ~ "OR",
+      str_detect(string = state, pattern = "WYOM")    ~ "WY",
+      TRUE ~ state)
+    )
 
 # Create a skill column that aggregates the multiple skill responses
 # Assign all users an experience code
 survey <- survey %>% 
-  mutate(skill = case_when(!is.na(skill_novice) ~ "novice",
-                           !is.na(skill_intermediate) ~ "intermediate",
-                           !is.na(skill_advanced) ~ "advanced",
-                           !is.na(skill_expert) ~ "expert"))
+  mutate(
+    skill = case_when(
+      !is.na(skill_novice)       ~ "novice",
+      !is.na(skill_intermediate) ~ "intermediate",
+      !is.na(skill_advanced)     ~ "advanced",
+      !is.na(skill_expert)       ~ "expert")
+    )
 
 # Public/commercial
 # Note: case_when evaluated in order
@@ -64,51 +74,60 @@ survey <- survey %>%
 # but there 18 respondents who entered both guide and public
 # They are classified as "guide"
 survey <- survey %>% 
-  mutate(category = case_when(!is.na(cat_commercial_customer) ~ "customer",
-                              !is.na(cat_commercial_guide) ~ "guide",
-                              !is.na(cat_public) ~ "public"))
+  mutate(
+    category = case_when(
+      !is.na(cat_commercial_customer) ~ "customer",
+      !is.na(cat_commercial_guide)    ~ "guide",
+      !is.na(cat_public)              ~ "public")
+    )
 
 
 # Order factors:
 # This way they appear in an order that makes sense when plotting
 survey <- survey %>% 
-  mutate(skill = factor(skill, 
-                        levels = c("novice", 
-                                   "intermediate",
-                                   "advanced",
-                                   "expert")),
-         visit_freq = factor(visit_freq, 
-                             levels = c("1 time a season",
-                                        "2-5 times a season",
-                                        "5-20 times a season",
-                                        "20+ times a season",
-                                        "50+ times a season")),
-         report_confidence = factor(report_confidence, 
-                                    levels = c("Not comfortable at all",
-                                               "somewhat uncomfortable",
-                                               "neutral",
-                                               "somewhat comfortable",
-                                               "very comfortable")),
-         trip_length = factor(trip_length,
-                              levels = c("0-5 miles",
-                                         "5-10 miles",
-                                         "10-20 miles",
-                                         "20-50 miles",
-                                         "50+ miles")))
+  mutate(
+    skill              = factor(skill, 
+                            levels = c("novice", 
+                                       "intermediate",
+                                       "advanced",
+                                       "expert")),
+    visit_freq         = factor(visit_freq, 
+                            levels = c("1 time a season",
+                                       "2-5 times a season",
+                                       "5-20 times a season",
+                                       "20+ times a season",
+                                       "50+ times a season")),
+    report_confidence  = factor(report_confidence, 
+                            levels = c("Not comfortable at all",
+                                       "somewhat uncomfortable",
+                                       "neutral",
+                                       "somewhat comfortable",
+                                       "very comfortable")),
+    trip_length        = factor(trip_length,
+                            levels = c("0-5 miles",
+                                       "5-10 miles",
+                                       "10-20 miles",
+                                       "20-50 miles",
+                                       "50+ miles"))
+    )
 
 # Add numeric values for visits and trip length
 # These are abstractions based on the recorded categories
 survey <- survey %>% 
-  mutate(visit_n = case_when(as.integer(visit_freq) == 1 ~ 1,
-                             as.integer(visit_freq) == 2 ~ 3.5,
-                             as.integer(visit_freq) == 3 ~ 12.5,
-                             as.integer(visit_freq) == 4 ~ 35,
-                             as.integer(visit_freq) == 5 ~ 50),
-         trip_length_miles = case_when(as.integer(trip_length) == 1 ~ 2.5,
-                                       as.integer(trip_length) == 2 ~ 7.5,
-                                       as.integer(trip_length) == 3 ~ 15,
-                                       as.integer(trip_length) == 4 ~ 35,
-                                       as.integer(trip_length) == 5 ~ 50))
+  mutate(
+    visit_n = case_when(
+      as.integer(visit_freq) == 1 ~ 1,
+      as.integer(visit_freq) == 2 ~ 3.5,
+      as.integer(visit_freq) == 3 ~ 12.5,
+      as.integer(visit_freq) == 4 ~ 35,
+      as.integer(visit_freq) == 5 ~ 50),
+    trip_length_miles = case_when(
+      as.integer(trip_length) == 1 ~ 2.5,
+      as.integer(trip_length) == 2 ~ 7.5,
+      as.integer(trip_length) == 3 ~ 15,
+      as.integer(trip_length) == 4 ~ 35,
+      as.integer(trip_length) == 5 ~ 50)
+    )
 
 # Change more_visits_pwp to a yes/no column
 survey$more_visits_pwp <- ifelse(is.na(survey$more_visits_pwp),
@@ -135,9 +154,12 @@ reach_codes <- read_csv("private_data/poudre_survey_reach_codes.csv")
 
 # Make dummy data frame
 flowpref.dat <- data.frame()
+# rm(flowpref.dat, tmp, tmp.melt, reach_code, reach_name, stage_or_flow)
 
 # Loop through and format flow preference by reach
 for(i in 1:length(reach_codes$code)){
+  
+  logger::log_info("code {i}")
   
   # Identify the reach code
   # reach name and flow or stage designation
@@ -153,43 +175,137 @@ for(i in 1:length(reach_codes$code)){
   
   # Make a craft column from multiple columns
   tmp <- tmp %>% 
-    mutate(craft = case_when(!is.na(craft_kayak) ~ "kayak",
-                             !is.na(craft_raft_shredder) ~ "raft_shredder",
-                             !is.na(craft_packraft_inflatable) ~ "packraft_inflatable",
-                             !is.na(craft_canoe) ~ "canoe",
-                             !is.na(craft_sup) ~ "sup",
-                             !is.na(craft_other) ~ "other"))
-  
+    mutate(
+      craft = case_when(
+        !is.na(craft_kayak)               ~ "kayak",
+        !is.na(craft_raft_shredder)       ~ "raft_shredder",
+        !is.na(craft_packraft_inflatable) ~ "packraft_inflatable",
+        !is.na(craft_canoe)               ~ "canoe",
+        !is.na(craft_sup)                 ~ "sup",
+        !is.na(craft_other)               ~ "other")
+      )
+
   # Make data vertical
   tmp.melt <- tmp %>% 
     select(respondent_id, craft, starts_with("flow_pref")) %>% 
-    melt(., value.name = "preference", variable.name = "flow", 
-         id.vars = c("respondent_id", "craft")) %>% 
-    mutate(preference.code = case_when(preference == "Unacceptable" ~ -2,
-                                       str_detect(preference, c("Moderately","Unacceptable")) == 1 ~ -1,
-                                       preference == "Marginal" ~ 0,
-                                       preference == "Moderately Acceptable" ~ 1,
-                                       preference == "Acceptable" ~ 2), 
-           segment.name = reach_name)
+    melt(
+      ., 
+      value.name    = "preference",
+      variable.name = "flow", 
+      id.vars       = c("respondent_id", "craft")) %>% 
+    mutate(
+      preference.code = case_when(
+        preference == "Unacceptable"                                ~ -2,
+        str_detect(preference, c("Moderately","Unacceptable")) == 1 ~ -1,
+        preference == "Marginal"                                    ~ 0,
+        preference == "Moderately Acceptable"                       ~ 1,
+        preference == "Acceptable"                                  ~ 2), 
+      segment.name = reach_name
+      )
+  
+  # Get & Tidy data from min craft, min acceptable, best technical, best average, best challenge, max craft columns
+  responses <- tmp %>% 
+    dplyr::select(respondent_id, craft, flow_min_craft, flow_min_acceptable, contains("flow_best"), flow_max_craft) %>% 
+    mutate(
+      flow_min_craft       = gsub(",", "", flow_min_craft),     # remove commas from columns
+      flow_min_acceptable  = gsub(",", "", flow_min_acceptable),
+      flow_best_average    = gsub(",", "", flow_best_average),     
+      flow_best_technical  = gsub(",", "", flow_best_technical),
+      flow_best_challenge  = gsub(",", "", flow_best_challenge),
+      flow_max_craft       = gsub(",", "", flow_max_craft)
+    ) %>% 
+    mutate(              
+      flow_min_craft       = case_when(                         # remove "#" from columns, and then extract all digits from columns
+        grepl("#", flow_min_craft, fixed = T)        ~ "NA",
+        TRUE                                         ~  str_extract(flow_min_craft, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_min_acceptable  = case_when(
+        grepl("#", flow_min_acceptable, fixed = T)   ~ "NA",
+        TRUE                                         ~  str_extract(flow_min_acceptable, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_best_average    = case_when(
+        grepl("#", flow_best_average, fixed = T)     ~ "NA",
+        TRUE                                         ~  str_extract(flow_best_average, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_best_technical  = case_when(
+        grepl("#", flow_best_technical, fixed = T)   ~ "NA",
+        TRUE                                         ~  str_extract(flow_best_technical, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_best_challenge  = case_when(
+        grepl("#", flow_best_challenge, fixed = T)   ~ "NA",
+        TRUE                                         ~  str_extract(flow_best_challenge, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_max_craft       = case_when(                         
+        grepl("#", flow_max_craft, fixed = T)        ~ "NA",
+        TRUE                                         ~  str_extract(flow_max_craft, "\\-*\\d+\\-*\\d*")
+      )
+    ) 
+  
+  # For survey responses w/ a range of values (100 - 200 = 150 e.g.), calculate the mean value
+  responses <- responses %>% 
+    mutate(
+      flow_min_craft       = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_min_craft, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_min_acceptable  = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_min_acceptable, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_best_average    = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_best_average, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_best_technical  = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_best_technical, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_best_challenge  = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_best_challenge, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_max_craft       = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_max_craft, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      )
+    )
+  
+  # Join tmp.melt w/ responses dataframe by respondent_id
+  tmp_join <- left_join(
+                          tmp.melt,
+                          responses, 
+                          by = c("respondent_id", "craft")
+                        )
   
   # Convert values to flow or stage
   if(stage_or_flow == "flow"){
-    tmp.melt <- tmp.melt %>% 
+    tmp_join <- tmp_join %>% 
       mutate(flow = as.numeric(str_replace_all(flow, "flow_pref_", "")))
   } else {
-    tmp.melt <- tmp.melt %>% 
+    tmp_join <- tmp_join %>% 
       mutate(flow = as.numeric(str_replace_all(flow, "flow_pref_", "")) / 100)
   }
   
   # Bind to other data
-  flowpref.dat <- bind_rows(flowpref.dat, tmp.melt)
+  flowpref.dat <- bind_rows(flowpref.dat, tmp_join)
   
 }
 
 # Export the flow preference data
 saveRDS(object = flowpref.dat,
         file = "private_data/flow-pref-data_20200630.RDS")
-
 
 ################################################################################
 # Econ data
