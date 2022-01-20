@@ -100,11 +100,13 @@ LabelString <- function(thresh_min, thresh_max, max_plot, is.stage = FALSE) {
 
 attribute.file <- here::here(
   "private_data", 
-  "respondent-attributes_20200630.RDS"
+  "respondent-attributes_20220105.RDS"
+  # "respondent-attributes_20200630.RDS"
   )
 flowpref.file  <- here::here(
   "private_data", 
-  "flow-pref-data_20200630.RDS"
+  "flow-pref-data_20220105.RDS"
+  # "flow-pref-data_20200630.RDS"
   )
 
 # Import data
@@ -312,8 +314,9 @@ for(i in 1:length(segments)){
     geom_segment(aes(x = flow_thresh_min, xend = flow_thresh_max_plot, y = 0, yend = 0), 
                  color = "black",
                  arrow = arrow(ends = "both"),
-                 lwd = 1.5) 
-
+                 lwd = 1.5) +
+    scale_x_continuous(limits=c(0, max(results$flow))) +
+    theme(legend.position = "left")
   # Add axis labels and titles
   # Plus acceptable flow/stage range
   # Some reaches have stage values, others have flow
@@ -352,12 +355,64 @@ for(i in 1:length(segments)){
                )
   }
   
+  # use model to convert stage to flow
+  respondent_flow_pref <- flowpref.dat %>%
+    filter(segment.name == segment_name) %>% 
+    pivot_longer(c(flow_min_craft:flow_max_craft), names_to = "respondent_var", values_to = "respondent_val") %>%
+    mutate(
+      respondent_val = case_when(                            
+        respondent_val > 5.5 & respondent_val <= 10 ~ 5.5,                            # convert stage values between 5.5 and 10 to 5.5 
+        TRUE                                        ~ respondent_val
+      ),
+      flow_transform = case_when(
+        respondent_val <= stage.thresh  ~ predict(m, list(stage = respondent_val)),  # use rating model to convert stage values to flow values    
+        TRUE                            ~ respondent_val
+      )
+    ) %>%
+    select(-flow) %>%
+    rename(flow = flow_transform) %>% 
+    filter(flow <= flow_thresh_max_plot) %>%                                         # remove flow values greater than the max values used in flow preference curve 
+    mutate(
+      respondent_var = factor(
+            respondent_var,                                                          # reorder factors for graphing
+            levels = c("flow_min_craft", "flow_best_technical", 
+                       "flow_min_acceptable", "flow_best_average", 
+                       "flow_best_challenge", "flow_max_craft")
+            )
+          ) 
+
+  boating_preference_plot <- 
+      ggplot() +
+        geom_boxplot(
+          data = respondent_flow_pref, 
+          aes(
+            x = flow, 
+            y = respondent_var)
+          ) +
+        labs(
+           x     = "Flow (cfs)",
+           y     = "Boating preferences",
+           title = paste0(segment_name, " Boating Preferences")
+           ) +
+      scale_x_continuous(limits = c(0, max(results$flow)))          
+  
+  # plot Boating preference and flow preference on same plot and save
+  boat_flow_pref_plots <- 
+      cowplot::plot_grid(
+                        boating_preference_plot, 
+                        flow_pref_plot,
+                        ncol  = 1,
+                        align = "v",
+                        axis  = "l"
+                        )
   # Export plot
   save_plot(filename = paste0("plots/flow_pref/flow_pref_",
                               segment_name2,
                               "_annotated.png"),
-            plot = flow_pref_plot,
-            base_width = 7)
+            plot = boat_flow_pref_plots,
+            base_width = 10,
+            base_height = 10
+            )
   
   # Add summary data to data frame
   flow_pref_summary <- bind_rows(flow_pref_summary,

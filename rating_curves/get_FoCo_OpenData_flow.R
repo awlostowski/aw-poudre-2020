@@ -29,47 +29,10 @@ library(tidyverse)
 library(lubridate)
 library(RSocrata)
 library(logger)
+source(here::here('rating_curves', 'get_flow_utils.R'))
 
 ##------------------------------------------------------------------------------
-## Function definitions
 
-getOpenData <- function(sensor_name) {
-  # 
-  # Retrieve flow DataFrame from https://opendata.fcgov.com/ by sensor name
-  #
-  # Args:
-  #   sensor_name (str): name of sensor for which data will be retrieved
-  #
-  # Returns:
-  #   Tidy DataFrame of gage flow data
-  
-  # full URL of City of Fort Collins OpenData site
-  url <- "https://opendata.fcgov.com/resource/f5as-vvbj.json?sensor_name="
-  
-  # sensor-specific URL
-  sensor_url <- paste0(url, gsub(" ", "%20", sensor_name))
-  
-  # retrieve data using the RSocrata library
-  logger::log_info(
-    "Downloading flow and stage data from opendata.fcgov.com at {sensor_name}"
-    )
-  flow_data <- RSocrata::read.socrata(
-      url = sensor_url
-  )
-  
-  # tidy data
-  flow_data <- flow_data %>% 
-    dplyr::select(sensor_name, timestamp, stage_ft, flow_cfs) %>% 
-    dplyr::mutate(
-      flow_cfs   = as.numeric(flow_cfs),
-      stage_ft   = as.numeric(stage_ft),
-      date       = lubridate::ymd(as.Date(timestamp)),
-      time       = format(timestamp, "%H:%M")
-    ) %>% 
-    dplyr::select(sensor_name, date, time, stage_ft, flow_cfs) 
-}
-
-##------------------------------------------------------------------------------
 ## Executed statements
 
 # list of sensor sites
@@ -80,7 +43,7 @@ path <- here::here("data","gauge")
 
 for (s in sensors) {
   
-  station.data <- getOpenData(s)
+  station.data <- getOpenDataFlow(s)
   
   # save data to disk as RDS
   filename <- paste0(
