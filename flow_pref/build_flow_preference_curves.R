@@ -124,10 +124,14 @@ if (file.exists(attribute.file) & file.exists(attribute.file)) {
 # convert Pineview Rock stage values to flow, using rating curve
 
 # filename and path to rating curve model object
-rating.file <- here::here("rating_curves","pineview_rating_model.RDS")
+rating.file <- here::here("rating_curves","piecewise_pineview_rating_model.RDS")
 
 # stage "flow" threshold
 stage.thresh = 5.5
+
+# load rating curve model
+m <- readRDS(rating.file)
+
 
 if (file.exists(rating.file)) {
   
@@ -141,19 +145,24 @@ if (file.exists(rating.file)) {
   # use model to convert stage to flow
   flowpref.dat <- flowpref.dat %>%
     mutate(
-      stage = if_else(
-        flow <= stage.thresh,
-        flow,
-        NA_real_
-      ),
-      flow_transform = if_else(
-        flow <= stage.thresh,           # condition to I.D. stage values
-        predict(m, list(stage = flow)), # if condition = T: predict flow with model
-        flow                            # if condition = F: flow = flow
-        )
-      ) %>%
+    stage = case_when(
+      flow <= stage.thresh            ~ flow,                           # use rating model to convert stage values to flow values
+      TRUE                            ~ NA_real_
+                     )
+          )
+    
+  flowpref.dat$flow_transform <- predict(m, newdata = flowpref.dat)
+  
+  flowpref.dat <- flowpref.dat %>%
+    mutate(
+      flow_transform = case_when(                            
+        is.na(flow_transform) == TRUE               ~ flow,                           # convert stage values between 5.5 and 10 to 5.5 
+        is.na(flow_transform) == FALSE              ~ flow_transform
+      )
+    ) %>% 
     select(-flow) %>%
     rename(flow = flow_transform)
+    
   
 } else {
   
@@ -315,7 +324,7 @@ for(i in 1:length(segments)){
                  color = "black",
                  arrow = arrow(ends = "both"),
                  lwd = 1.5) +
-    scale_x_continuous(limits=c(0, max(results$flow))) +
+    scale_x_continuous(limits = c(0, max(results$flow))) +
     theme(legend.position = "left")
   # Add axis labels and titles
   # Plus acceptable flow/stage range
@@ -355,32 +364,46 @@ for(i in 1:length(segments)){
                )
   }
   
-  # use model to convert stage to flow
+  # Open ended survey response (Boating flow preference data)
   respondent_flow_pref <- flowpref.dat %>%
-    filter(segment.name == segment_name) %>% 
-    pivot_longer(c(flow_min_craft:flow_max_craft), names_to = "respondent_var", values_to = "respondent_val") %>%
-    mutate(
-      respondent_val = case_when(                            
-        respondent_val > 5.5 & respondent_val <= 10 ~ 5.5,                            # convert stage values between 5.5 and 10 to 5.5 
-        TRUE                                        ~ respondent_val
-      ),
-      flow_transform = case_when(
-        respondent_val <= stage.thresh  ~ predict(m, list(stage = respondent_val)),  # use rating model to convert stage values to flow values    
-        TRUE                            ~ respondent_val
+      filter(segment.name == segment_name) %>%
+      dplyr::select(-flow, -stage) %>% 
+      pivot_longer(
+        cols      = c(flow_min_craft:flow_max_craft), 
+        names_to  = "respondent_var", 
+        values_to = "respondent_val") %>%
+      mutate(
+        respondent_val = case_when(                            
+          respondent_val > 5.5 & respondent_val <= 10 ~ 5.5,                            # convert stage values between 5.5 and 10 to 5.5 
+          TRUE                                        ~ respondent_val
+        ),  
+        stage = case_when(
+          respondent_val <= stage.thresh  ~ respondent_val,                             # create stage column for flow values <= 5.5  
+          TRUE                            ~ NA_real_
+        )
       )
-    ) %>%
-    select(-flow) %>%
-    rename(flow = flow_transform) %>% 
-    filter(flow <= flow_thresh_max_plot) %>%                                         # remove flow values greater than the max values used in flow preference curve 
-    mutate(
-      respondent_var = factor(
-            respondent_var,                                                          # reorder factors for graphing
-            levels = c("flow_min_craft", "flow_best_technical", 
-                       "flow_min_acceptable", "flow_best_average", 
-                       "flow_best_challenge", "flow_max_craft")
-            )
-          ) 
-
+  # Piecewise regression model to predict flow from stage values
+  respondent_flow_pref$flow_transform <-  predict(m, newdata = respondent_flow_pref)    # use model to convert stage to flow
+  
+  respondent_flow_pref <- respondent_flow_pref %>%
+      mutate(
+        flow_transform = case_when(                            
+          is.na(flow_transform) == TRUE               ~ respondent_val,                 # combine stage-flow converted data with actual flow values
+          is.na(flow_transform) == FALSE              ~ flow_transform
+        )
+      ) %>% 
+      rename(flow = flow_transform) %>%
+      filter(flow <= flow_thresh_max_plot) %>%                                          # remove flow values greater than the max values used in flow preference curve
+      mutate(
+        respondent_var = factor(
+          respondent_var,                                                               # reorder factors for graphing
+          levels = c("flow_min_craft", "flow_best_technical",
+                     "flow_min_acceptable", "flow_best_average",
+                     "flow_best_challenge", "flow_max_craft")
+        )
+      )
+  
+  # Boating preference box plot
   boating_preference_plot <- 
       ggplot() +
         geom_boxplot(
@@ -394,7 +417,7 @@ for(i in 1:length(segments)){
            y     = "Boating preferences",
            title = paste0(segment_name, " Boating Preferences")
            ) +
-      scale_x_continuous(limits = c(0, max(results$flow)))          
+    scale_x_continuous(limits = c(0, max(results$flow)))
   
   # plot Boating preference and flow preference on same plot and save
   boat_flow_pref_plots <- 

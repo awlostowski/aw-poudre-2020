@@ -37,6 +37,8 @@ library(nlstools)
 library(rootSolve) 
 library(stringr)
 library(logger)
+library(segmented)
+
 source(here::here('rating_curves', 'get_flow_utils.R'))
 
 ##------------------------------------------------------------------------------
@@ -152,7 +154,58 @@ pl_plot <- ggplot(rating.data, aes(x = stage, y = flow)) +
 print(pl_plot)
 path <- here::here("rating_curves")
 logger::log_info("saving a plot of Pineview rating curve at {path}")
-ggsave(paste0(path, "/pineview_rating.png"))
+ggsave(paste0(path, "/pineview_rating.png"), plot = pl_plot)
+
+# =======================================
+# Develop rating relationship with piecewise regression model
+
+# remove zeros 
+rating_data_rm_zero <- rating.data %>% 
+  filter(stage > 0)
+
+# simple linear regression
+lm <- lm(flow ~ stage, rating_data_rm_zero)
+
+# Segmented linear regression model w/ break at 2
+segment_fit <- segmented::segmented(lm, fixed.psi = 1)
+
+
+# save Logarithmic regression model object
+path     <- here::here("rating_curves")
+filename <- "piecewise_pineview_rating_model.RDS"
+logger::log_info("saving Piecewise linear regression Pineview rating model at {path} as {filename}")
+saveRDS(segment_fit, paste0(path, "/", filename))
+
+# =======================================
+# Plot and save piecewise rating curve plot
+
+fit_segment <- rating_data_rm_zero %>% 
+  mutate(
+    fitted = segment_fit$fitted.values
+  )
+
+seg_lm_plot <- 
+  ggplot() +
+    geom_point(data = fit_segment, aes(x = stage, y = flow), alpha = 0.6, size = 1.5) +
+    geom_line(data = fit_segment, aes(x = stage, y = fitted),  size = 1.5, color = "red") +
+    scale_y_continuous(breaks = seq(0, 4000, 250)) +
+    labs(
+      y = "Flow @ Pine View (cfs)", 
+      x = "Rock Report stage @ Pine View (ft)",
+      title = "Poudre Rock Rating Curve - Piecewise linear regression  "
+    ) +
+    theme_bw() +
+    theme(
+      axis.text = element_text(size = 14),
+      axis.title  = element_text(size = 14)
+    ) 
+
+seg_lm_plot
+
+path <- here::here("rating_curves")
+logger::log_info("saving a plot of Pineview rating curve at {path}")
+ggsave(paste0(path, "/piecewise_pineview_rating.png"), plot = seg_lm_plot)
+
 
 # # =======================================
 # # Evaluate relationship between flows at Poudre Park and Rustic
