@@ -174,17 +174,103 @@ for(i in 1:length(reach_codes$code)){
                                        preference == "Acceptable" ~ 2), 
            segment.name = reach_name)
   
+  # Get & Tidy data from min craft, min acceptable, best technical, best average, best challenge, max craft columns
+  responses <- tmp %>% 
+    dplyr::select(respondent_id, craft, flow_min_craft, flow_min_acceptable, contains("flow_best"), flow_max_craft) %>% 
+    mutate(
+      flow_min_craft       = gsub(",", "", flow_min_craft),     # remove commas from columns
+      flow_min_acceptable  = gsub(",", "", flow_min_acceptable),
+      flow_best_average    = gsub(",", "", flow_best_average),     
+      flow_best_technical  = gsub(",", "", flow_best_technical),
+      flow_best_challenge  = gsub(",", "", flow_best_challenge),
+      flow_max_craft       = gsub(",", "", flow_max_craft)
+    ) %>% 
+    mutate(              
+      flow_min_craft       = case_when(                         # remove "#" from columns, and then extract all digits from columns
+        grepl("#", flow_min_craft, fixed = T)        ~ "NA",
+        TRUE                                         ~  str_extract(flow_min_craft, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_min_acceptable  = case_when(
+        grepl("#", flow_min_acceptable, fixed = T)   ~ "NA",
+        TRUE                                         ~  str_extract(flow_min_acceptable, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_best_average    = case_when(
+        grepl("#", flow_best_average, fixed = T)     ~ "NA",
+        TRUE                                         ~  str_extract(flow_best_average, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_best_technical  = case_when(
+        grepl("#", flow_best_technical, fixed = T)   ~ "NA",
+        TRUE                                         ~  str_extract(flow_best_technical, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_best_challenge  = case_when(
+        grepl("#", flow_best_challenge, fixed = T)   ~ "NA",
+        TRUE                                         ~  str_extract(flow_best_challenge, "\\-*\\d+\\-*\\d*")
+      ),
+      flow_max_craft       = case_when(                         
+        grepl("#", flow_max_craft, fixed = T)        ~ "NA",
+        TRUE                                         ~  str_extract(flow_max_craft, "\\-*\\d+\\-*\\d*")
+      )
+    ) 
+  
+  # For survey responses w/ a range of values (100 - 200 = 150 e.g.), calculate the mean value
+  responses <- responses %>% 
+    mutate(
+      flow_min_craft       = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_min_craft, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_min_acceptable  = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_min_acceptable, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_best_average    = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_best_average, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_best_technical  = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_best_technical, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_best_challenge  = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_best_challenge, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      ),
+      flow_max_craft       = sapply(
+        strsplit(
+          gsub("[\\[\\]]", "", flow_max_craft, perl = T), "-"
+        ),
+        function(x) mean(as.numeric(x))
+      )
+    )
+  
+  # Join tmp.melt w/ responses dataframe by respondent_id
+  tmp_join <- left_join(
+    tmp.melt,
+    responses, 
+    by = c("respondent_id", "craft")
+  )
+  
   # Convert values to flow or stage
   if(stage_or_flow == "flow"){
-    tmp.melt <- tmp.melt %>% 
+    tmp_join <- tmp_join %>% 
       mutate(flow = as.numeric(str_replace_all(flow, "flow_pref_", "")))
   } else {
-    tmp.melt <- tmp.melt %>% 
+    tmp_join <- tmp_join %>% 
       mutate(flow = as.numeric(str_replace_all(flow, "flow_pref_", "")) / 100)
   }
   
   # Bind to other data
-  flowpref.dat <- bind_rows(flowpref.dat, tmp.melt)
+  flowpref.dat <- bind_rows(flowpref.dat, tmp_join)
   
 }
 
