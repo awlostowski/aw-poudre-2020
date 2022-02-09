@@ -38,110 +38,213 @@ library(logger)
 ## Function definitions
 
 #===========================================
-getCDSSDiversionFlow <- function(wdid, save.data = FALSE) {
+
+#===========================================
+getCDSSDiversionFlow <- function(
+  wdid, 
+  data_type = "flow",
+  save.data = FALSE
+) {
   
-  # 
-  # Get daily diversion flow data from the CDSS REST service.
-  #
-  # Args:
-  #   wdid (chr): unique structure identification code
-  #
-  # Returns:
-  #   all_data (tibble): tidy tibble of hourly flow record
-  
-  # base URL for CDSS diversion records API 
-  base <- "https://dwr.state.co.us/Rest/GET/api/v2/structures/divrec/"
-  
-  # maximum records per page
-  pageSize = 50000
-  
-  # initialize empty dataframe to store data from multiple pages
-  all_data = data.frame()
-  
-  # initialize pageInex
-  pageIndex = 1
-  
-  # grab data while there are more pages of data to grab
-  more_pages = T
-  while (more_pages) {
+  if(data_type == "flow") {
     
-    url <- paste0(base, 
-                  "divrecday/?dateFormat=spaceSepToSeconds&",
-                  "wcIdentifier=*Total+(Diversion)*&wdid=", wdid,
-                  "&pageSize=", pageSize,
-                  "&pageIndex=", pageIndex)
+    # base URL for CDSS diversion records API 
+    base <- "https://dwr.state.co.us/Rest/GET/api/v2/structures/divrec/"
     
-    logger::log_info(
-      "Downloading WDID:{wdid} diversion flow data from CDSS API..."
-    )
+    # maximum records per page
+    pageSize = 50000
     
-    # GET request to CDSS API
-    tryCatch( 
-      {
-        cdss_api <- httr::GET(url) %>%
-          content(as = "text") %>% 
-          fromJSON() %>% 
-          bind_rows() 
-      },
-      error = function(e) {
-        logger::log_error(
-          'An error was encountered when trying to download diversion flow data at WDID:{wdid}'
+    # initialize empty dataframe to store data from multiple pages
+    all_data = data.frame()
+    
+    # initialize pageInex
+    pageIndex = 1
+    
+    # grab data while there are more pages of data to grab
+    more_pages = T
+    while (more_pages) {
+      
+        url <- paste0(base, 
+                      "divrecday/?dateFormat=spaceSepToSeconds&",
+                      "wcIdentifier=*Total+(Diversion)*&wdid=", wdid,
+                      "&pageSize=", pageSize,
+                      "&pageIndex=", pageIndex)
+        
+        logger::log_info(
+          "Downloading WDID:{wdid} diversion flow data from CDSS API..."
         )
-        logger::log_error(
-          'Perhaps the URL address is incorrect OR there are no data available.'
+        
+        # GET request to CDSS API
+        tryCatch( 
+          {
+            cdss_api <- httr::GET(url) %>%
+              content(as = "text") %>% 
+              fromJSON() %>% 
+              bind_rows() 
+          },
+          error = function(e) {
+            logger::log_error(
+              'An error was encountered when trying to download diversion flow data at WDID:{wdid}'
+            )
+            logger::log_error(
+              'Perhaps the URL address is incorrect OR there are no data available.'
+            )
+            logger::log_error('Here is the URL address that was queried:')
+            logger::log_error('{url}')
+            logger::log_error('And, here is the original error message:')
+            logger::log_error('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+            logger::log_error(message(e))
+            stop()
+          }
         )
-        logger::log_error('Here is the URL address that was queried:')
-        logger::log_error('{flow_url}')
-        logger::log_error('And, here is the orriginal error message:')
-        logger::log_error('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
-        logger::log_error(message(e))
-        stop()
-      }
-    )
-    
-    # Tidy data 
-    structure_data <- cdss_api$ResultList %>%  
-      dplyr::select(
-        wdid,
-        datestring = dataMeasDate,
-        flow       = dataValue,
-        unit       = measUnits
-      ) %>% 
-      mutate(
-        datetime = lubridate::as_datetime(datestring),
-        date     = lubridate::as_date(datestring),
-        source   = 'CDSS'
-      ) %>% 
-      dplyr::select(wdid, datetime, date, flow, unit, source)
-    
-    # bind data from this page
-    all_data <- rbind(all_data, structure_data)
-    
-    # determine if thre are additional pages of data to get.
-    if (nrow(structure_data) < pageSize) {
-      more_pages = FALSE
-    } else {
-      pageIndex = pageIndex + 1
+        
+        # Tidy data 
+        structure_data <- cdss_api$ResultList %>%  
+          dplyr::select(
+            wdid,
+            datestring = dataMeasDate,
+            flow       = dataValue,
+            unit       = measUnits
+          ) %>% 
+          mutate(
+            datetime = lubridate::as_datetime(datestring),
+            date     = lubridate::as_date(datestring),
+            source   = 'CDSS'
+          ) %>% 
+          dplyr::select(wdid, datetime, date, flow, unit, source)
+        
+        # bind data from this page
+        all_data <- rbind(all_data, structure_data)
+        
+        # determine if thre are additional pages of data to get.
+        if (nrow(structure_data) < pageSize) {
+          more_pages = FALSE
+        } else {
+          pageIndex = pageIndex + 1
+        }
+      
+    }
+    if (save.data) {
+        
+        # save data to disk as RDS
+        path     <- here::here("data", "gauge")
+        filename <- paste0("wdid_",wdid,
+                           "_structure_flow.RDS")
+        logger::log_info(
+          'saving WDID:{wdid} diversion flow data to {path} as {filename}'
+        )
+        saveRDS(all_data, paste0(path, "/", filename))
+      
     }
     
-  }
-  
-  if (save.data) {
+    return(as_tibble(all_data))
     
-    # save data to disk as RDS
-    path <- here::here("data", "gauge")
-    filename <- paste0("wdid_",wdid,
-                       "_structure_flow.RDS")
-    logger::log_info(
-      'saving WDID:{wdid} diversion flow data to {path} as {filename}'
-    )
-    saveRDS(all_data, paste0(path, "/", filename))
-
+  } else if(data_type == "stage"){
+    
+    # base URL for CDSS diversion records API 
+    base <- "https://dwr.state.co.us/Rest/GET/api/v2/structures/divrec/"
+    
+    # maximum records per page
+    pageSize = 50000
+    
+    # initialize empty dataframe to store data from multiple pages
+    all_data = data.frame()
+    
+    # initialize pageInex
+    pageIndex = 1
+    
+    # grab data while there are more pages of data to grab
+    more_pages = T
+    while (more_pages) {
+      
+        url <- paste0(base, 
+                      "stagevolume/?dateFormat=spaceSepToSeconds&wdid=", 
+                      wdid, 
+                      "&pageSize=",
+                      pageSize,
+                      "&pageIndex=", 
+                      pageIndex
+        )
+        
+        
+        logger::log_info(
+          "Downloading WDID:{wdid} stage/volume data from CDSS API..."
+        )
+        
+        # GET request to CDSS API
+        tryCatch( 
+          {
+            cdss_api <- httr::GET(url) %>%
+              content(as = "text") %>% 
+              fromJSON() %>% 
+              bind_rows() 
+          },
+          error = function(e) {
+            logger::log_error(
+              'An error was encountered when trying to download stage/volume data at WDID:{wdid}'
+            )
+            logger::log_error(
+              'Perhaps the URL address is incorrect OR there are no data available.'
+            )
+            logger::log_error('Here is the URL address that was queried:')
+            logger::log_error('{url}')
+            logger::log_error('And, here is the original error message:')
+            logger::log_error('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+            logger::log_error(message(e))
+            stop()
+          }
+        )
+        
+        # Tidy data 
+        structure_data <- cdss_api$ResultList %>%  
+          dplyr::select(
+            wdid,
+            datestring = dataMeasDate,
+            stage,
+            volume
+          ) %>% 
+          mutate(
+            datetime = lubridate::as_datetime(datestring),
+            date     = lubridate::as_date(datestring),
+            source   = 'CDSS'
+          ) %>% 
+          dplyr::select(wdid, datetime, date, stage, volume, source)
+        
+        # bind data from this page
+        all_data <- rbind(all_data, structure_data)
+        
+        # determine if thre are additional pages of data to get.
+        if (nrow(structure_data) < pageSize) {
+          more_pages = FALSE
+        } else {
+          pageIndex = pageIndex + 1
+        }
+      
+    }
+    
+    if (save.data) {
+      
+        # save data to disk as RDS
+        path     <- here::here("data", "gauge")
+        filename <- paste0("wdid_",wdid,
+                           "_structure_stage.RDS")
+        logger::log_info(
+          'saving WDID:{wdid} diversion stage/flow data to {path} as {filename}'
+        )
+        saveRDS(all_data, paste0(path, "/", filename))
+      
+    }
+    
+    return(as_tibble(all_data))
+    
+  } else {
+    
+    logger::log_info('Invalid parameter input data_type, data_type must equal either "flow" or "stage"')
+    
   }
-  
-  return(as_tibble(all_data))
   
 }
+
 
 #===========================================
 GetCDSSStationFlow <- function(
@@ -344,6 +447,23 @@ getOpenDataFlow <- function(sensor_name, save.data = FALSE) {
   return(flow_data)
 }
 
+# Function to retrieve a list of telemetry stations from the CDSS API that contain useful information such as WDID, abbreviations, etc.
+getStationInfo <- function() {
+  url <- "https://dwr.state.co.us/Rest/GET/api/v2/telemetrystations/telemetrystation/?includeHistoric=true"
+  
+  # GET request to CDSS API
+  cdss_api_stations <- httr::GET(url) %>%
+    content(as = "text") %>%
+    fromJSON() %>%
+    bind_rows()
+  
+  structures <- cdss_api_stations$ResultList %>%
+    janitor::clean_names() 
+  # dplyr::select(station_name, wdid, gnis_id, usgs_station_id, abbrev, station_type, structure_type, stream_mile, parameter, stage, meas_value)
+  
+  return(structures)
+  
+}
 ##------------------------------------------------------------------------------
 ## Executed statements
 
