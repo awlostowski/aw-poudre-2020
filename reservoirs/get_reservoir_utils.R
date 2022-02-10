@@ -171,7 +171,7 @@ getCDSSDiversionFlow <- function(
        
        
        logger::log_info(
-         "Downloading WDID:{wdid} stage/volume data from CDSS API..."
+         "Downloading WDID:{wdid} stage data from CDSS API..."
        )
        
        # GET request to CDSS API
@@ -184,7 +184,7 @@ getCDSSDiversionFlow <- function(
          },
          error = function(e) {
            logger::log_error(
-             'An error was encountered when trying to download stage/volume data at WDID:{wdid}'
+             'An error was encountered when trying to download stage data at WDID:{wdid}'
            )
            logger::log_error(
              'Perhaps the URL address is incorrect OR there are no data available.'
@@ -203,15 +203,14 @@ getCDSSDiversionFlow <- function(
          dplyr::select(
            wdid,
            datestring = dataMeasDate,
-           stage,
-           volume
+           stage
          ) %>% 
          mutate(
            datetime = lubridate::as_datetime(datestring),
            date     = lubridate::as_date(datestring),
            source   = 'CDSS'
          ) %>% 
-         dplyr::select(wdid, datetime, date, stage, volume, source)
+         dplyr::select(wdid, datetime, date, stage, source)
        
        # bind data from this page
        all_data <- rbind(all_data, structure_data)
@@ -232,8 +231,106 @@ getCDSSDiversionFlow <- function(
        filename <- paste0("wdid_",wdid,
                           "_structure_stage.RDS")
        logger::log_info(
-         'saving WDID:{wdid} diversion stage/flow data to {path} as {filename}'
+         'saving WDID:{wdid} stage data to {path} as {filename}'
          )
+       saveRDS(all_data, paste0(path, "/", filename))
+       
+     }
+     
+     return(as_tibble(all_data))
+     
+   } else if(data_type == "volume"){
+     
+     
+     # base URL for CDSS diversion records API 
+     base <- "https://dwr.state.co.us/Rest/GET/api/v2/structures/divrec/"
+     
+     # maximum records per page
+     pageSize = 50000
+     
+     # initialize empty dataframe to store data from multiple pages
+     all_data = data.frame()
+     
+     # initialize pageInex
+     pageIndex = 1
+     
+     # grab data while there are more pages of data to grab
+     more_pages = T
+     while (more_pages) {
+       
+       url <- paste0(base, 
+                     "stagevolume/?dateFormat=spaceSepToSeconds&wdid=", 
+                     wdid, 
+                     "&pageSize=",
+                     pageSize,
+                     "&pageIndex=", 
+                     pageIndex
+       )
+       
+       
+       logger::log_info(
+         "Downloading WDID:{wdid} volume data from CDSS API..."
+       )
+       
+       # GET request to CDSS API
+       tryCatch( 
+         {
+           cdss_api <- httr::GET(url) %>%
+             content(as = "text") %>% 
+             fromJSON() %>% 
+             bind_rows() 
+         },
+         error = function(e) {
+           logger::log_error(
+             'An error was encountered when trying to download volume data at WDID:{wdid}'
+           )
+           logger::log_error(
+             'Perhaps the URL address is incorrect OR there are no data available.'
+           )
+           logger::log_error('Here is the URL address that was queried:')
+           logger::log_error('{url}')
+           logger::log_error('And, here is the original error message:')
+           logger::log_error('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+           logger::log_error(message(e))
+           stop()
+         }
+       )
+       
+       # Tidy data 
+       structure_data <- cdss_api$ResultList %>%  
+         dplyr::select(
+           wdid,
+           datestring = dataMeasDate,
+           volume
+         ) %>% 
+         mutate(
+           datetime = lubridate::as_datetime(datestring),
+           date     = lubridate::as_date(datestring),
+           source   = 'CDSS'
+         ) %>% 
+         dplyr::select(wdid, datetime, date, volume, source)
+       
+       # bind data from this page
+       all_data <- rbind(all_data, structure_data)
+       
+       # determine if thre are additional pages of data to get.
+       if (nrow(structure_data) < pageSize) {
+         more_pages = FALSE
+       } else {
+         pageIndex = pageIndex + 1
+       }
+       
+     }
+     
+     if (save.data) {
+       
+       # save data to disk as RDS
+       path     <- here::here("data", "gauge")
+       filename <- paste0("wdid_",wdid,
+                          "_structure_volume.RDS")
+       logger::log_info(
+         'saving WDID:{wdid} volume data to {path} as {filename}'
+       )
        saveRDS(all_data, paste0(path, "/", filename))
        
      }
@@ -266,7 +363,7 @@ getCDSSDiversionFlow <- function(
                        "&pageIndex=", pageIndex)
          
          logger::log_info(
-           "Downloading WDID:{wdid} release flow data from CDSS API..."
+           "Downloading WDID:{wdid} release data from CDSS API..."
          )
          
          # GET request to CDSS API
@@ -279,7 +376,7 @@ getCDSSDiversionFlow <- function(
            },
            error = function(e) {
              logger::log_error(
-               'An error was encountered when trying to download release flow data at WDID:{wdid}'
+               'An error was encountered when trying to download release data at WDID:{wdid}'
              )
              logger::log_error(
                'Perhaps the URL address is incorrect OR there are no data available.'
@@ -326,7 +423,7 @@ getCDSSDiversionFlow <- function(
          filename <- paste0("wdid_",wdid,
                             "_structure_release.RDS")
          logger::log_info(
-           'saving WDID:{wdid} release flow data to {path} as {filename}'
+           'saving WDID:{wdid} release data to {path} as {filename}'
          )
          saveRDS(all_data, paste0(path, "/", filename))
      }
