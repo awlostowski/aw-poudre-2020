@@ -49,7 +49,7 @@ res_structures <- data.frame(
 
 reservoir_lst <- list()
 
-
+# i = 3
 # Loop through reservoir WDIDs and pull data from CDSS using getCDSSDiversionFlow()
 for (i in 1:length(res_structures$wdid)) {
       
@@ -125,130 +125,47 @@ for (i in 1:length(res_structures$wdid)) {
           stage, volume, diversion, release, source
           )
     
-      # add change in storage and inflow columns
-      res_data <- res_data %>% 
+      # add change in storage, outflow, & inflow columns
+      res_data <- res_data %>%
         cleaner::na_replace(release, volume, diversion) %>% 
         group_by(structure) %>%
         arrange(date) %>%
         mutate(
           dvolume             = volume - lag(volume),
+          dvolume             = case_when(
+                                        dvolume < 0 ~ 0,
+                                        TRUE        ~ dvolume
+                                      ),
           outflow             = (diversion + release),
-          inflow              = dvolume + outflow
+          inflow              = dvolume + outflow   
+          # inflow2             = dvolume - outflow
           ) %>%
         ungroup() %>% 
         dplyr::relocate(
           structure, wdid, date, 
           stage, volume, diversion, release,
-          outflow, dvolume, inflow, source
+          outflow, dvolume, inflow, source    # inflow2
         ) 
-      
       # add reservoir data to list of reservoirs
       reservoir_lst[[i]] <- res_data
       
       # remove data made during loop
-      rm(res_data, flow, stage, release, volume)
+      rm(res_data, flow,diversion, stage, release, volume)
       
 }
 
 # bind rows of all reservoirs
 reservoirs <- bind_rows(reservoir_lst)
 
-
-# *********************
-# ---- Volume plot ----
-# *********************
-
-# Summarize reservoir data for plotting
-
-# facet plot Volume @ Barnes Meadow, Chambers, Joe Wright, Long Draw, & Peterson 
-volume_data <- reservoirs %>%
-  pivot_longer(
-    cols       = c(stage, volume, diversion, release, dvolume, inflow, outflow),   # pivot data for plotting
-    names_to   = "variable",
-    values_to  = "value"
-    )  %>% 
-  filter(variable == "volume")
-
-volume_plot <-  ggplot() +  
-    geom_col(data = volume_data, aes(x = date, y = value, fill = variable)) + 
-    # facet_grid(variable~structure) +
-    facet_grid(structure~variable) +
-    labs(
-      title    = "Volume @ Poudre River Reservoirs",
-      x        = "Date",
-      y        = "Value",
-      fill     = ""
-    ) +
-    theme_bw() +
-    theme(
-      axis.text      = element_text(size = 12),
-      axis.title     = element_text(size = 14, face = "bold"),
-      plot.title     = element_text(size = 18, face = "bold"),
-      strip.text.x   = element_text(size = 12, color = "black",face = "bold"),
-      strip.text.y   = element_text(size = 12, color = "black",face = "bold"),
-      plot.caption   = element_text(size = 12)
-    )
-volume_plot
-
-# save
-# ggsave(
-#   "plots/reservoirs/reservoir_volume_plot.png",
-#   plot   = volume_plot,
-#   width  = 36,
-#   height = 28, 
-#   units  = "cm"
-# )
-
-rm(volume_data)
-
-
-# ***********************************
-# ---- Diversion & Releases plot ----
-# ***********************************
-
-# facet plot Diversions/Releases/Stage @ Barnes Meadow, Chambers, Joe Wright, Long Draw, & Peterson 
-diversion_release_data <- reservoirs %>%  
-  pivot_longer(
-    cols       = c(stage, volume, diversion, release, dvolume, inflow, outflow),   # pivot data for plotting
-    names_to   = "variable",
-    values_to  = "value"
-  )  %>% 
-  filter(variable %in%  c("diversion", "release"))         # remove volume data and outlier stage value for plotting
-    
-diversion_release_plot <- 
-  ggplot() +
-     geom_col(data = diversion_release_data, aes(x = date, y = value, fill = variable)) + 
-     facet_grid(structure~variable) +
-     labs(
-        title    = "Diversions + Releases + Stage @ Poudre River Reservoirs",
-        x        = "Date",
-        y        = "AF/day",
-        fill     = ""
-     ) +
-     theme_bw() +
-     theme(
-        axis.text      = element_text(size = 12),
-        axis.title     = element_text(size = 14, face = "bold"),
-        plot.title     = element_text(size = 18, face = "bold"),
-        strip.text.x   = element_text(size = 12, color = "black",face = "bold"),
-        strip.text.y   = element_text(size = 12, color = "black",face = "bold"),
-        plot.caption   = element_text(size = 12)
-     )
-
-diversion_release_plot
-
-# save
-# ggsave(
-#   "plots/reservoirs/reservoir_flows_plot.png",
-#   plot   = diversion_release_plot,
-#   width  = 36,
-#   height = 28, 
-#   units  = "cm"
-# )
-
-
-# ***********************
-
+# minimum operating capacity of reservoirs = minimum volume in time (not including 0 volumes)
+minimum_capacity <- reservoirs %>% 
+  filter(volume > 0) %>% 
+  group_by(structure) %>% 
+  mutate(
+    min_capacity =  min(volume)
+  ) %>% 
+  slice(n = 1) %>% 
+  ungroup()
 
 # ***********************
 #  ---- Stream Gages ----
@@ -304,12 +221,12 @@ for (i in 1:length(gage_structures$abbrev)) {
       wdid      = gage_structures$wdid[i],
       source    = "CDSS"
     ) %>% 
-    # dplyr::relocate(date, year, month, wyear, flow)
     dplyr::select(-year, -month) %>% 
     dplyr::relocate(structure, wdid, abbrev, date, flow, source)
   
   gage_lst[[i]] <- gage_month
   
+  rm(gage, gage_month)
 }
 
 cdss_gages <- bind_rows(gage_lst) 
@@ -326,13 +243,18 @@ res_gages <- reservoirs %>%
     by = c("structure", "date")
   ) %>% 
   rename(gage_flow = flow) %>% 
-  mutate(gage_inflow_calc = dvolume + gage_flow)
+  mutate(
+    gage_inflow_calc  = dvolume + gage_flow            # calculate inflows based on stream gage data
+    # gage_inflow_calc2 = dvolume - gage_flow
+    )
 
 # pivot data long for plotting
 water_balance <- res_gages %>% 
   pivot_longer(
     cols       = c(stage, volume, diversion, release, dvolume,
                    inflow, outflow, gage_flow, gage_inflow_calc),   # pivot data for plotting
+    # cols       = c(stage, volume, diversion, release, dvolume,
+    #                inflow, inflow2, outflow, gage_flow, gage_inflow_calc, gage_inflow_calc2),   # pivot data for plotting
     names_to   = "variable",
     values_to  = "value"
   ) %>% 
@@ -341,7 +263,7 @@ water_balance <- res_gages %>%
     date_wyear = as.Date(paste0(wyear, "-", lubridate::month(date), "-01"))
   ) %>% 
   filter(
-    variable %in% c("dvolume", "inflow","gage_inflow_calc", "gage_flow", "outflow"),
+    variable %in% c("dvolume", "inflow", "gage_inflow_calc", "gage_flow", "outflow"),
     date >= "2017-10-01",
     date <= "2021-10-01",
     structure %in% c("joe_wright", "long_draw", "chambers")
@@ -350,6 +272,7 @@ water_balance <- res_gages %>%
 # factors for facet plots
 water_balance$variable <-  factor(water_balance$variable, 
                                      levels=c("dvolume", "outflow", "inflow", "gage_flow", "gage_inflow_calc")
+                                     # levels=c("dvolume", "outflow", "inflow", "inflow2", "gage_flow")
                                   )
 
 # ****************************************************
@@ -378,14 +301,8 @@ water_balance_plot <-
       plot.caption   = element_text(size = 12)
     )
 water_balance_plot
+
 # Export plot
-save_plot(filename = paste0("plots/flow_pref/flow_pref_",
-                            segment_name2,
-                            "_annotated.png"),
-          plot = boat_flow_pref_plots,
-          base_width = 10,
-          base_height = 10
-)
 ggsave(
   "plots/reservoirs/res_gage_water_balance_plot.png",
   plot   = water_balance_plot,
@@ -394,6 +311,100 @@ ggsave(
   units  = "cm"
 )
 
+# *********************
+# ---- Volume plot ----
+# *********************
+
+# Summarize reservoir data for plotting
+
+# facet plot Volume @ Barnes Meadow, Chambers, Joe Wright, Long Draw, & Peterson 
+volume_data <- reservoirs %>%
+  pivot_longer(
+    cols       = c(stage, volume, diversion, release, dvolume, inflow, outflow),   # pivot data for plotting
+    names_to   = "variable",
+    values_to  = "value"
+  )  %>% 
+  filter(variable == "volume")
+
+volume_plot <-  ggplot() +  
+  geom_col(data = volume_data, aes(x = date, y = value, fill = variable)) + 
+  # facet_grid(variable~structure) +
+  facet_grid(structure~variable) +
+  labs(
+    title    = "Volume @ Poudre River Reservoirs",
+    x        = "Date",
+    y        = "Value",
+    fill     = ""
+  ) +
+  theme_bw() +
+  theme(
+    axis.text      = element_text(size = 12),
+    axis.title     = element_text(size = 14, face = "bold"),
+    plot.title     = element_text(size = 18, face = "bold"),
+    strip.text.x   = element_text(size = 12, color = "black",face = "bold"),
+    strip.text.y   = element_text(size = 12, color = "black",face = "bold"),
+    plot.caption   = element_text(size = 12)
+  )
+volume_plot
+
+# save
+# ggsave(
+#   "plots/reservoirs/reservoir_volume_plot.png",
+#   plot   = volume_plot,
+#   width  = 36,
+#   height = 28, 
+#   units  = "cm"
+# )
+
+rm(volume_data)
+
+
+# ***********************************
+# ---- Diversion & Releases plot ----
+# ***********************************
+
+# facet plot Diversions/Releases/Stage @ Barnes Meadow, Chambers, Joe Wright, Long Draw, & Peterson 
+diversion_release_data <- reservoirs %>%  
+  pivot_longer(
+    cols       = c(stage, volume, diversion, release, dvolume, inflow, outflow),   # pivot data for plotting
+    names_to   = "variable",
+    values_to  = "value"
+  )  %>% 
+  filter(variable %in%  c("diversion", "release"))         # remove volume data and outlier stage value for plotting
+
+diversion_release_plot <- 
+  ggplot() +
+  geom_col(data = diversion_release_data, aes(x = date, y = value, fill = variable)) + 
+  facet_grid(structure~variable) +
+  labs(
+    title    = "Diversions + Releases + Stage @ Poudre River Reservoirs",
+    x        = "Date",
+    y        = "AF/day",
+    fill     = ""
+  ) +
+  theme_bw() +
+  theme(
+    axis.text      = element_text(size = 12),
+    axis.title     = element_text(size = 14, face = "bold"),
+    plot.title     = element_text(size = 18, face = "bold"),
+    strip.text.x   = element_text(size = 12, color = "black",face = "bold"),
+    strip.text.y   = element_text(size = 12, color = "black",face = "bold"),
+    plot.caption   = element_text(size = 12)
+  )
+
+diversion_release_plot
+
+# save
+# ggsave(
+#   "plots/reservoirs/reservoir_flows_plot.png",
+#   plot   = diversion_release_plot,
+#   width  = 36,
+#   height = 28, 
+#   units  = "cm"
+# )
+
+
+# ***********************
 
 
 
