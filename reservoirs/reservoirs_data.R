@@ -288,18 +288,20 @@ water_balance_plot <-
       title    = "Water balance from Reservoir data vs. stream gage",
       x        = "Date",
       y        = "Volume (AF)",
-      subtitle = "outflow = diversions + releases \ninflow = dvolume + outflow \ngage_inflow_calc = dvolume + gage_flow",
+      subtitle = "outflow                    = diversions + releases \ninflow                      = dvolume + outflow \ngage_inflow_calc    = dvolume + gage_flow",
       fill     = ""
     ) +
     theme_bw() +
     theme(
-      axis.text      = element_text(size = 11),
-      axis.title     = element_text(size = 14, face = "bold"),
-      plot.title     = element_text(size = 18, face = "bold"),
-      strip.text.x   = element_text(size = 12, color = "black",face = "bold"),
-      strip.text.y   = element_text(size = 12, color = "black",face = "bold"),
-      plot.caption   = element_text(size = 12)
+      axis.text      = element_text(size = 14),
+      axis.title     = element_text(size = 16, face = "bold"),
+      plot.title     = element_text(size = 20, face = "bold"),
+      strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
+      strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
+      legend.text    = element_text(size = 12),
+      plot.subtitle  = element_text(size = 12)
     )
+
 water_balance_plot
 
 # Export plot
