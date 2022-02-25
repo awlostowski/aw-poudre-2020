@@ -132,13 +132,8 @@ for (i in 1:length(res_structures$wdid)) {
         arrange(date) %>%
         mutate(
           dvolume             = volume - lag(volume),
-          dvolume             = case_when(
-                                        dvolume < 0 ~ 0,
-                                        TRUE        ~ dvolume
-                                      ),
           outflow             = (diversion + release),
           inflow              = dvolume + outflow   
-          # inflow2             = dvolume - outflow
           ) %>%
         ungroup() %>% 
         dplyr::relocate(
@@ -245,7 +240,6 @@ res_gages <- reservoirs %>%
   rename(gage_flow = flow) %>% 
   mutate(
     gage_inflow_calc  = dvolume + gage_flow            # calculate inflows based on stream gage data
-    # gage_inflow_calc2 = dvolume - gage_flow
     )
 
 # pivot data long for plotting
@@ -285,7 +279,7 @@ water_balance_plot <-
     facet_grid(variable~structure) +
     # facet_grid(structure~variable) +
     labs(
-      title    = "Water balance from Reservoir data vs. stream gage",
+      title    = "Water balance from reservoir data vs. stream gage",
       x        = "Date",
       y        = "Volume (AF)",
       subtitle = "outflow                    = diversions + releases \ninflow                      = dvolume + outflow \ngage_inflow_calc    = dvolume + gage_flow",
