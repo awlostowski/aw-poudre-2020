@@ -426,8 +426,8 @@ managed_flows <- res_gages %>%
   )  %>% 
   ungroup() %>%
   mutate(
-    qmanaged      = chambers_outflow + barnes_meadow_outflow + long_draw_outflow                   # (Out_c + Out_b + Out_L)
-    # qmanaged_gage = chambers_gage_outflow + barnes_meadow_outflow + long_draw_gage_outflow       # Outflows from stream gages at Chambers & Long Draw
+    qmanaged      = chambers_outflow + barnes_meadow_outflow + long_draw_outflow,                   # (Out_c + Out_b + Out_L)
+    qmanaged_gage = chambers_gage_outflow + barnes_meadow_outflow + long_draw_gage_outflow       # Outflows from stream gages at Chambers & Long Draw
   ) %>% 
   rename(
     out_c   = chambers_outflow,
@@ -476,17 +476,56 @@ managed_flows_plot <-
 
 managed_flows_plot
 
+
+# pivot longer for plotting
+managed_gage_flows_long <- managed_flows %>%
+  dplyr::select(date, qmanaged_gage, out_c, out_b, out_ld) %>% 
+  pivot_longer(cols = c(-date))  %>% 
+  filter(date >= "2018-09-01") %>% 
+  mutate(
+    name =  factor(name, levels=c("out_c", "out_b", "out_ld", "qmanaged_gage"))
+  )
+
+# Plot managed flows using stream gage outflows
+managed_gage_flows_plot <- 
+  ggplot() +
+  geom_col(data = managed_gage_flows_long,  aes(x = date, y = value, fill = name)) +
+  # facet_wrap(~name) +
+  facet_grid(~name) +
+  labs(
+    title    = "Managed flows (using stream gage outflows)",
+    subtitle = "qmanaged = out_c + out_b + out_ld",
+    x        = "Date",
+    y        = "Volume (AF)",
+    fill     = ""
+  ) +
+  theme_bw() +
+  theme(
+    axis.text      = element_text(size = 12),
+    axis.title     = element_text(size = 16, face = "bold"),
+    plot.title     = element_text(size = 20, face = "bold"),
+    strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
+    strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
+    legend.text    = element_text(size = 12),
+    plot.subtitle  = element_text(size = 14)
+  )  +
+  scale_x_date(date_labels="%b %y",date_breaks  ="6 month") +
+  scale_y_continuous(
+    limits = c(0, 30000),
+    breaks = seq(0, 30000, 5000)
+  )
+
+
+managed_gage_flows_plot
+
 # Export plot
 ggsave(
-  "plots/reservoirs/managed_flows_plot.png",
-  plot   = managed_flows_plot,
+  "plots/reservoirs/managed_gage_flows_plot.png",
+  plot   = managed_gage_flows_plot,
   width  = 50,
   height = 22,
   units  = "cm"
 )
-
-managed_flows_plot
-plotly::ggplotly(managed_flows_plot)
 
 # *********************************
 # ---- Natural + Managed flows ----
@@ -495,13 +534,13 @@ plotly::ggplotly(managed_flows_plot)
 # QNatural vs. Qmanaged
 qnat_qman <-   left_join(
                     dplyr::select(natural_flows, date, qnatural),
-                    dplyr::select(managed_flows, qmanaged), 
+                    dplyr::select(managed_flows, date, qmanaged, qmanaged_gage), 
                     by = "date"
                     ) %>% 
   filter(date >= "2018-09-01") %>% 
   pivot_longer(cols = c(-date)) %>% 
   mutate(
-    name = factor(name, levels=c("qnatural", "qmanaged"))
+    name = factor(name, levels=c("qnatural", "qmanaged", "qmanaged_gage"))
   )
 
 # Plot managed flows
@@ -513,7 +552,7 @@ qnat_qman_plot <-
     # facet_grid(name~.) +
     labs(
       title    = "Natural vs. Managed Flows",
-      subtitle = "qnatural        = in_jw + (in_c - out_jw) + in_b + in_ld \nqmanaged   = out_c + out_b + out_ld",
+      subtitle = "qnatural                  = in_jw + (in_c - out_jw) + in_b + in_ld \nqmanaged              = out_c + out_b + out_ld \nqmanaged_gage   = out_c_gage + out_b + out_ld_gage",
       x        = "Date",
       y        = "Volume (AF)",
       fill     = ""
