@@ -430,9 +430,11 @@ managed_flows <- res_gages %>%
     qmanaged_gage = chambers_gage_outflow + barnes_meadow_outflow + long_draw_gage_outflow       # Outflows from stream gages at Chambers & Long Draw
   ) %>% 
   rename(
-    out_c   = chambers_outflow,
-    out_b   = barnes_meadow_outflow,
-    out_ld  = long_draw_outflow
+    out_c        = chambers_outflow,
+    out_b        = barnes_meadow_outflow,
+    out_ld       = long_draw_outflow,
+    out_c_gage   = chambers_gage_outflow,
+    out_ld_gage  = long_draw_gage_outflow
   ) 
 
 # pivot longer for plotting
@@ -479,11 +481,11 @@ managed_flows_plot
 
 # pivot longer for plotting
 managed_gage_flows_long <- managed_flows %>%
-  dplyr::select(date, qmanaged_gage, out_c, out_b, out_ld) %>% 
+  dplyr::select(date, qmanaged_gage, out_c_gage, out_b, out_ld_gage) %>% 
   pivot_longer(cols = c(-date))  %>% 
   filter(date >= "2018-09-01") %>% 
   mutate(
-    name =  factor(name, levels=c("out_c", "out_b", "out_ld", "qmanaged_gage"))
+    name =  factor(name, levels=c("out_c_gage", "out_b", "out_ld_gage", "qmanaged_gage"))
   )
 
 # Plot managed flows using stream gage outflows
@@ -494,7 +496,7 @@ managed_gage_flows_plot <-
   facet_grid(~name) +
   labs(
     title    = "Managed flows (using stream gage outflows)",
-    subtitle = "qmanaged = out_c + out_b + out_ld",
+    subtitle = "qmanaged_gage = out_c_gage + out_b + out_ld_gage",
     x        = "Date",
     y        = "Volume (AF)",
     fill     = ""
