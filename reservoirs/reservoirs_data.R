@@ -237,18 +237,18 @@ res_gages <- reservoirs %>%
     dplyr::select(cdss_gages, structure, date, flow),
     by = c("structure", "date")
   ) %>% 
-  rename(gage_flow = flow) %>% 
+  rename(gage_outflow = flow) %>% 
   mutate(
-    gage_inflow_calc  = dvolume + gage_flow            # calculate inflows based on stream gage data
+    gage_inflow  = dvolume + gage_outflow            # calculate inflows based on stream gage data
     )
 
 # pivot data long for plotting
 water_balance <- res_gages %>% 
   pivot_longer(
     cols       = c(stage, volume, diversion, release, dvolume,
-                   inflow, outflow, gage_flow, gage_inflow_calc),   # pivot data for plotting
+                   inflow, outflow, gage_outflow, gage_inflow),   # pivot data for plotting
     # cols       = c(stage, volume, diversion, release, dvolume,
-    #                inflow, inflow2, outflow, gage_flow, gage_inflow_calc, gage_inflow_calc2),   # pivot data for plotting
+    #                inflow, inflow2, outflow, gage_outflow, gage_inflow, gage_inflow2),   # pivot data for plotting
     names_to   = "variable",
     values_to  = "value"
   ) %>% 
@@ -257,7 +257,7 @@ water_balance <- res_gages %>%
     date_wyear = as.Date(paste0(wyear, "-", lubridate::month(date), "-01"))
   ) %>% 
   filter(
-    variable %in% c("dvolume", "inflow", "gage_inflow_calc", "gage_flow", "outflow"),
+    variable %in% c("dvolume", "inflow", "gage_inflow", "gage_outflow", "outflow"),
     date >= "2017-10-01",
     date <= "2021-10-01",
     structure %in% c("joe_wright", "long_draw", "chambers")
@@ -265,8 +265,8 @@ water_balance <- res_gages %>%
 
 # factors for facet plots
 water_balance$variable <-  factor(water_balance$variable, 
-                                     levels=c("dvolume", "outflow", "inflow", "gage_flow", "gage_inflow_calc")
-                                     # levels=c("dvolume", "outflow", "inflow", "inflow2", "gage_flow")
+                                     levels=c("dvolume", "outflow", "inflow", "gage_outflow", "gage_inflow")
+                                     # levels=c("dvolume", "outflow", "inflow", "inflow2", "gage_outflow")
                                   )
 
 # ****************************************************
@@ -282,7 +282,7 @@ water_balance_plot <-
       title    = "Water balance from reservoir data vs. stream gage",
       x        = "Date",
       y        = "Volume (AF)",
-      subtitle = "outflow                    = diversions + releases \ninflow                      = dvolume + outflow \ngage_inflow_calc    = dvolume + gage_flow",
+      subtitle = "outflow                    = diversions + releases \ninflow                      = dvolume + outflow \ngage_inflow    = dvolume + gage_outflow",
       fill     = ""
     ) +
     theme_bw() +
@@ -304,6 +304,244 @@ ggsave(
   plot   = water_balance_plot,
   width  = 36,
   height = 28, 
+  units  = "cm"
+)
+
+# ***********************************
+# ---- Managed vs. Natural flows ----
+# ***********************************
+
+# Join CDSS gages and reservoir data
+
+# ---- Natural flows ----
+# Qnatural = In_j + (In_c - Out_j) + In_b + In_L
+
+# (Out_c Out_j)
+gage_flows <- res_gages %>% 
+  filter(structure %in% c("joe_wright", "chambers", "long_draw"))  %>%
+  filter(date >=" 2018-09-01") %>%
+  # na.omit() %>%
+  pivot_wider(
+    id_cols     = c(structure, date),
+    names_from  = "structure",
+    names_glue  = "{structure}_{.value}",
+    values_from = c(gage_outflow, gage_inflow),
+    values_fn   = mean
+  ) %>% 
+  ungroup() %>% 
+  na.omit() %>%
+  mutate(
+    added_flow = chambers_gage_inflow - joe_wright_gage_outflow  # (In_c - Out_j) 
+  ) 
+
+# In_b
+barnes_flows <- res_gages %>% 
+  filter(
+    structure %in% c("barnes_meadow"),
+    date >=" 2018-09-01"
+    ) %>% 
+  dplyr::select(date, inflow) %>% 
+  rename(barnes_meadow_inflow = inflow)
+ 
+# Calculate Qnatural  
+natural_flows <- gage_flows %>% 
+  left_join(
+    barnes_flows,
+    by = "date"
+    ) %>% 
+  mutate(
+    qnatural = joe_wright_gage_inflow + added_flow + barnes_meadow_inflow + long_draw_gage_inflow
+  ) %>% 
+  rename(
+    in_jw   = joe_wright_gage_inflow,
+    out_jw  = joe_wright_gage_outflow,
+    in_c    = chambers_gage_inflow,
+    out_c   = chambers_gage_outflow,
+    in_ld   = long_draw_gage_inflow,
+    out_ld  = long_draw_gage_outflow,
+    in_b    = barnes_meadow_inflow
+    ) 
+  
+# pivot longer for plotting
+natural_flows_long <- natural_flows %>% 
+  dplyr::select(date, qnatural, in_jw, added_flow, in_b, in_ld) %>% 
+  pivot_longer(cols = c(-date)) %>% 
+  mutate(
+    name =  factor(name, levels=c("in_jw", "added_flow", "in_b", "in_ld", "qnatural"))
+  )
+
+# Plot natural flows
+natural_flows_plot <-
+  ggplot() +
+    geom_col(data = natural_flows_long,  aes(x = date, y = value, fill = name)) +
+    # facet_wrap(name~.) +
+    facet_grid(~name) +
+  # facet_grid(name~.) +
+    labs(
+      title    = "Natural flows",
+      subtitle = "qnatural = in_jw + added_flow + in_b + in_ld",
+      x        = "Date",
+      y        = "Volume (AF)",
+      fill     = ""
+    ) +
+    theme_bw() +
+    theme(
+      axis.text      = element_text(size = 12),
+      axis.title     = element_text(size = 16, face = "bold"),
+      plot.title     = element_text(size = 20, face = "bold"),
+      strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
+      strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
+      legend.text    = element_text(size = 12),
+      plot.subtitle  = element_text(size = 14)
+    ) +
+  scale_x_date(date_labels="%b %y",date_breaks  ="6 month") +
+  scale_y_continuous(breaks = seq(0, 30000, 5000))
+
+natural_flows_plot
+
+# Export plot
+ggsave(
+  "plots/reservoirs/natural_flows_plot.png",
+  plot   = natural_flows_plot,
+  width  = 50,
+  height = 22,
+  units  = "cm"
+)
+
+# ***********************
+# ---- Managed flows ----
+# ***********************
+# Qmanaged = Out_c + Out_b + Out_L
+
+# calculate Qmanaged
+managed_flows <- res_gages %>% 
+  filter(structure %in% c("long_draw", "chambers", "barnes_meadow"))  %>%
+  dplyr::select(date, structure, wdid, outflow, gage_outflow) %>% 
+  pivot_wider(
+    id_cols     = c(structure, date),
+    names_from  = "structure",
+    names_glue  = "{structure}_{.value}",
+    values_from = c(outflow, gage_outflow),
+    values_fn   = mean
+  )  %>% 
+  ungroup() %>%
+  mutate(
+    qmanaged      = chambers_outflow + barnes_meadow_outflow + long_draw_outflow                   # (Out_c + Out_b + Out_L)
+    # qmanaged_gage = chambers_gage_outflow + barnes_meadow_outflow + long_draw_gage_outflow       # Outflows from stream gages at Chambers & Long Draw
+  ) %>% 
+  rename(
+    out_c   = chambers_outflow,
+    out_b   = barnes_meadow_outflow,
+    out_ld  = long_draw_outflow
+  ) 
+
+# pivot longer for plotting
+managed_flows_long <- managed_flows %>%
+  dplyr::select(date, qmanaged, out_c, out_b, out_ld) %>% 
+  pivot_longer(cols = c(-date))  %>% 
+  filter(date >= "2018-09-01") %>% 
+  mutate(
+    name =  factor(name, levels=c("out_c", "out_b", "out_ld", "qmanaged"))
+    )
+
+# Plot managed flows
+managed_flows_plot <- 
+  ggplot() +
+    geom_col(data = managed_flows_long,  aes(x = date, y = value, fill = name)) +
+    # facet_wrap(~name) +
+    facet_grid(~name) +
+    labs(
+      title    = "Managed flows",
+      subtitle = "qmanaged = out_c + out_b + out_ld",
+      x        = "Date",
+      y        = "Volume (AF)",
+      fill     = ""
+    ) +
+    theme_bw() +
+    theme(
+      axis.text      = element_text(size = 12),
+      axis.title     = element_text(size = 16, face = "bold"),
+      plot.title     = element_text(size = 20, face = "bold"),
+      strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
+      strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
+      legend.text    = element_text(size = 12),
+      plot.subtitle  = element_text(size = 14)
+    )  +
+  scale_x_date(date_labels="%b %y",date_breaks  ="6 month") +
+  scale_y_continuous(
+    limits = c(0, 30000),
+    breaks = seq(0, 30000, 5000)
+    )
+
+
+managed_flows_plot
+
+# Export plot
+ggsave(
+  "plots/reservoirs/managed_flows_plot.png",
+  plot   = managed_flows_plot,
+  width  = 50,
+  height = 22,
+  units  = "cm"
+)
+
+managed_flows_plot
+plotly::ggplotly(managed_flows_plot)
+
+# *********************************
+# ---- Natural + Managed flows ----
+# *********************************
+
+# QNatural vs. Qmanaged
+qnat_qman <-   left_join(
+                    dplyr::select(natural_flows, date, qnatural),
+                    dplyr::select(managed_flows, qmanaged), 
+                    by = "date"
+                    ) %>% 
+  filter(date >= "2018-09-01") %>% 
+  pivot_longer(cols = c(-date)) %>% 
+  mutate(
+    name = factor(name, levels=c("qnatural", "qmanaged"))
+  )
+
+# Plot managed flows
+qnat_qman_plot <- 
+  ggplot() +
+    geom_col(data = qnat_qman,  aes(x = date, y = value, fill = name)) +
+    # facet_wrap(~name) +
+  facet_grid(~name) +
+    # facet_grid(name~.) +
+    labs(
+      title    = "Natural vs. Managed Flows",
+      subtitle = "qnatural        = in_jw + (in_c - out_jw) + in_b + in_ld \nqmanaged   = out_c + out_b + out_ld",
+      x        = "Date",
+      y        = "Volume (AF)",
+      fill     = ""
+    ) +
+    theme_bw() +
+    theme(
+      axis.text      = element_text(size = 12),
+      axis.title     = element_text(size = 16, face = "bold"),
+      plot.title     = element_text(size = 20, face = "bold"),
+      strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
+      strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
+      legend.text    = element_text(size = 12),
+      plot.subtitle  = element_text(size = 14)
+    ) +
+  scale_x_date(date_labels="%b %y",date_breaks  ="6 month") +
+  scale_y_continuous(
+    limits = c(0, 30000),
+    breaks = seq(0, 30000, 5000)
+  )
+
+qnat_qman_plot
+
+# Export plot
+ggsave(
+  "plots/reservoirs/natural_vs_managed_flows_plot.png",
+  plot   = qnat_qman_plot,
+  width  = 50,
+  height = 22,
   units  = "cm"
 )
 
@@ -409,7 +647,7 @@ diversion_release_plot
 # ********************
 
 above_jw_usgs_id <- "06746095"
-
+below_jw_usgs_id <- "06746110"
 # USGS stream gages
 usgs_lst <- list()
 
