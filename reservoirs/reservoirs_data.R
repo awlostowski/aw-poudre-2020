@@ -18,6 +18,21 @@
 ##
 ## Notes:
 ##
+
+# reservoirs we are concerned with are "flow through" reservoirs. This means that the total outflow includes both run of river throughflow (i.e. water that simply flows in and flows out) plus the "release" volume, which is a managed release.
+
+# Total outflow = Run of River throughflow + "Release volume"
+# The "diversion" volume is the volume of water that is placed into storage by the reservoir.
+
+# water balance equation:
+# dS = diversion - releases
+
+# Natural flow below reservoir:
+# Qnat = Qobs + sum(Diversion) - sum(Release)
+# where Qobs is the observed flow downstream of the reservoir(s).
+
+# We can calculate what the flow would otherwise be lower in the canyon by just analyzing the reservoir release and diversion data.
+
 ##------------------------------------------------------------------------------
 
 remove(list = ls())  # clear all workspace variables
@@ -34,30 +49,27 @@ library(jsonlite)
 library(httr)
 library(logger)
 library(cleaner)
-library(nwmTools)
-library(AOI)
-library(sf)
-library(dataRetrieval)
 
 source("reservoirs/get_reservoir_utils.R")
 
 # Reservoirs and WDIDs
 res_structures <- data.frame(
-                          structure  =  c('long_draw', 'chambers', 'joe_wright', 'peterson', 'barnes_meadow'), # "zimmerman",
-                          wdid       =  c("0303676", "0303679", "0303678", "0303677", "0303683")               # "0303758"
-                        )
+        structure  =  c('long_draw', 'chambers', 'joe_wright', 'peterson', 'barnes_meadow'), # "zimmerman",
+        wdid       =  c("0303676", "0303679", "0303678", "0303677", "0303683")               # "0303758"
+        )
 
 reservoir_lst <- list()
 
-# i = 3
 # Loop through reservoir WDIDs and pull data from CDSS using getCDSSDiversionFlow()
 for (i in 1:length(res_structures$wdid)) {
       
-      logger::log_info("Getting stage/volume/release/diversion flow data  @  {res_structures$structure[i]}  --  WDID: {res_structures$wdid[i]}")
+      logger::log_info("Getting stage/volume/release/diversion data:\n{res_structures$structure[i]}\nWDID: {res_structures$wdid[i]}")
   
       # get stage/volume data for reservoir
-      stage <- getCDSSDiversionFlow(wdid = res_structures$wdid[i], data_type = "stage")
-      stage <- stage %>%
+      stage <- getCDSSDiversionFlow(
+          wdid      = res_structures$wdid[i],
+          data_type = "stage"
+        ) %>%
         mutate(
           month = month(date),
           year  = year(date)
@@ -71,8 +83,10 @@ for (i in 1:length(res_structures$wdid)) {
         dplyr::select(date, stage)
       
       # get stage/volume data for reservoir
-      volume <- getCDSSDiversionFlow(wdid = res_structures$wdid[i], data_type = "volume")
-      volume <- volume %>%   
+      volume <- getCDSSDiversionFlow(
+          wdid      = res_structures$wdid[i], 
+          data_type = "volume"
+        ) %>%   
         mutate(
           month = month(date),
           year  = year(date)
@@ -88,18 +102,20 @@ for (i in 1:length(res_structures$wdid)) {
 
       # get releases data for reservoir
       release <- getCDSSDiversionFlow(
-                                    wdid      = res_structures$wdid[i],
-                                    data_type = "release",
-                                    timescale = "monthly"
-                                    ) %>% dplyr::select(date, release)
-      
+          wdid      = res_structures$wdid[i],
+          data_type = "release",
+          timescale = "monthly"
+        ) %>%
+        dplyr::select(date, release)
+
       
       # get flow data for reservoir and sum flow by month 
       diversion <- getCDSSDiversionFlow(
-                                      wdid      = res_structures$wdid[i], 
-                                      data_type = "flow",
-                                      timescale = "monthly"
-                                      ) %>% dplyr::select(date, diversion = flow)
+          wdid      = res_structures$wdid[i], 
+          data_type = "flow",
+          timescale = "monthly" 
+        ) %>% 
+        dplyr::select(date, diversion = flow)
       
       # Join Stage/volume and flow data
       res_data <- stage %>% 
@@ -109,7 +125,7 @@ for (i in 1:length(res_structures$wdid)) {
         ) %>% 
         left_join(
           diversion, 
-          by = c("date")  # by = c("month", "year")
+          by = c("date")  
           ) %>% 
         left_join(
           release,
@@ -124,23 +140,26 @@ for (i in 1:length(res_structures$wdid)) {
           structure, wdid, date, 
           stage, volume, diversion, release, source
           )
-    
+      
+      # water balance equation:
+      # dS = diversion - releases
+      
       # add change in storage, outflow, & inflow columns
       res_data <- res_data %>%
         cleaner::na_replace(release, volume, diversion) %>% 
         group_by(structure) %>%
         arrange(date) %>%
         mutate(
-          dvolume             = volume - lag(volume),
-          outflow             = (diversion + release),
-          inflow              = dvolume + outflow   
+          dvolume               = (diversion - release)        # dS = diversion - releases
           ) %>%
         ungroup() %>% 
         dplyr::relocate(
-          structure, wdid, date, 
+          structure, wdid, date,
           stage, volume, diversion, release,
-          outflow, dvolume, inflow, source    # inflow2
-        ) 
+          dvolume, 
+          source
+        )
+      
       # add reservoir data to list of reservoirs
       reservoir_lst[[i]] <- res_data
       
@@ -152,27 +171,14 @@ for (i in 1:length(res_structures$wdid)) {
 # bind rows of all reservoirs
 reservoirs <- bind_rows(reservoir_lst)
 
-# minimum operating capacity of reservoirs = minimum volume in time (not including 0 volumes)
-minimum_capacity <- reservoirs %>% 
-  filter(volume > 0) %>% 
-  group_by(structure) %>% 
-  mutate(
-    min_capacity =  min(volume)
-  ) %>% 
-  slice(n = 1) %>% 
-  ungroup()
-
-# ***********************
-#  ---- Stream Gages ----
-# ***********************
-
-api_token <- "2fx%2B0sUzKbpOWeqkWzbU4BIIOtpwoVyE"
-
-# CDSS & USGS gages below + above reservoirs
-
 # ********************
 # ---- CDSS gages ----
 # ********************
+
+# CDSS gages below + above reservoirs
+
+# optional API token key
+api_token <- "2fx%2B0sUzKbpOWeqkWzbU4BIIOtpwoVyE"
 
 # Gages abbreviations below/above reservoirs
 gage_structures <- data.frame(
@@ -190,6 +196,7 @@ for (i in 1:length(gage_structures$abbrev)) {
   
   logger::log_info("Getting gage data  @  {gage_structures$structure[i]}  --  Abbrev: {gage_structures$abbrev[i]}")
 
+  # Get daily stream gage data
   gage <- GetCDSSStationFlow(
     site_abbrev = gage_structures$abbrev[i],
     api_key     = api_token,
@@ -205,12 +212,11 @@ for (i in 1:length(gage_structures$abbrev)) {
     ) %>% 
     group_by(month, year) %>%
     summarize(
-      flow   = round(sum(flow_af_day, na.rm = T), 3)          # Sum daily AF/day to get total acre feet of flow in each month (AF)      
+      flow   = round(sum(flow_af_day, na.rm = T), 3)          # Sum daily AF/day to get total AF of flow in each month (AF)      
     ) %>%
     ungroup() %>%
     mutate(
-      date      = as.Date(paste0(year, "-", month, "-01")),
-      # wyear     = lfstat::water_year(date),
+      date      = as.Date(paste0(year, "-", month, "-01")),   # wyear     = lfstat::water_year(date),
       structure = gage_structures$structure[i],
       abbrev    = gage_structures$abbrev[i],
       wdid      = gage_structures$wdid[i],
@@ -226,63 +232,188 @@ for (i in 1:length(gage_structures$abbrev)) {
 
 cdss_gages <- bind_rows(gage_lst) 
 
-# *******************************
-# ---- Gage + reservoir data ----
-# *******************************
-
+# ************************************
+# ---- CDSS Gage + reservoir data ----
+# ************************************
 
 # Join CDSS gages and reservoir data
-res_gages <- reservoirs %>% 
+reservoir_totals <- reservoirs %>% 
   left_join(
     dplyr::select(cdss_gages, structure, date, flow),
     by = c("structure", "date")
   ) %>% 
-  rename(gage_outflow = flow) %>% 
+  rename(gage_outflow = flow) %>%
   mutate(
-    gage_inflow  = dvolume + gage_outflow            # calculate inflows based on stream gage data
-    )
+    qnatural   = gage_outflow + dvolume,                      # calculate inflows based on stream gage data
+    ) %>% 
+  dplyr::relocate(
+    structure, wdid, date, stage, volume, diversion,
+    release, dvolume, gage_outflow, qnatural, source
+    ) %>% 
+  group_by(date) %>%                                          # Add up diversions and releases across all reservoirs
+  summarise(
+    volume       = sum(volume, na.rm = T),
+    diversion    = sum(diversion, na.rm = T),
+    release      = sum(release, na.rm = T)
+  ) %>% 
+  ungroup() %>% 
+  arrange(date) %>% 
+  mutate(
+    dvolume   = diversion - release                           # calculate change in volume
+    ) 
+
+# *****************************************
+# ---- Calculate daily Qnatural in CFS ----
+# *****************************************
+
+# Pineview model flow
+pineview_model  <- readRDS("boatable_days/simulated_historical_pineview_flow.RDS")
+
+# Generate daily dates using min/max dates in Pineview model 
+days <- seq.Date(
+              from = min(pineview_model$date),
+              to   = max(pineview_model$date),
+              by   = "day"
+            ) %>% 
+  tibble() %>% 
+  setNames(c("date")) %>% 
+  mutate(
+    month   = lubridate::month(date),
+    year    = lubridate::year(date),
+    date_ym = as.Date(paste0(year, "-", month, "-01"))
+  ) %>% 
+  dplyr::select(date, date_ym)
+
+# join days dataframe with monthly reservoir totals
+reservoir_daily <-  left_join(
+    days,
+    reservoir_totals, 
+    by = c("date_ym" = "date")
+  ) %>% 
+  group_by(date) %>% 
+  summarise(
+    days_in_month     = days_in_month(date),
+    dvolume           =  (dvolume/days_in_month)*0.5042864       # calculate daily value per month, convert AF to CFS     
+  ) %>% 
+  ungroup() %>% 
+  dplyr::select(-days_in_month)
+
+# Join daily reservoir flow in CFS with Pineview model results
+reservoir_pv_flow <- left_join(
+  pineview_model,
+  reservoir_daily,
+  by = "date"
+  ) %>% 
+  mutate(
+    sim_nat = flow - dvolume          # Simulate natural flows = Pineview flows - (Diversions - Releases)
+    ) %>% 
+  rename(pineview_flow = flow) 
 
 # pivot data long for plotting
-water_balance <- res_gages %>% 
-  pivot_longer(
-    cols       = c(stage, volume, diversion, release, dvolume,
-                   inflow, outflow, gage_outflow, gage_inflow),   # pivot data for plotting
-    # cols       = c(stage, volume, diversion, release, dvolume,
-    #                inflow, inflow2, outflow, gage_outflow, gage_inflow, gage_inflow2),   # pivot data for plotting
-    names_to   = "variable",
-    values_to  = "value"
-  ) %>% 
+reservoir_pv_flow_long <- reservoir_pv_flow %>% 
+  pivot_longer(cols = c(-date)) %>%
   mutate(
-    wyear      = as.numeric(as.character(lfstat::water_year(date, origin = "din"))),
-    date_wyear = as.Date(paste0(wyear, "-", lubridate::month(date), "-01"))
+    name = factor(name, 
+                  levels=c("pineview_flow", "sim_nat", "dvolume"))
   ) %>% 
-  filter(
-    variable %in% c("dvolume", "inflow", "gage_inflow", "gage_outflow", "outflow"),
-    date >= "2017-10-01",
-    date <= "2021-10-01",
-    structure %in% c("joe_wright", "long_draw", "chambers")
-    )
+  filter(date >= "2018-01-01", date <= "2020-01-01")
 
-# factors for facet plots
-water_balance$variable <-  factor(water_balance$variable, 
-                                     levels=c("dvolume", "outflow", "inflow", "gage_outflow", "gage_inflow")
-                                     # levels=c("dvolume", "outflow", "inflow", "inflow2", "gage_outflow")
-                                  )
+# pivot data long for plotting
+reservoir_flow_plot <- 
+  ggplot() +
+    geom_line(data = reservoir_pv_flow_long, 
+              aes(x = date, y = value, col = name, alpha = name),
+              size = 1.5) +
+  scale_alpha_manual(
+    values = c("pineview_flow" = 1, "sim_nat" = 0.6, "dvolume" = 1),
+    guide  = 'none') +
+    labs(
+      title    = "Reservoir flows and Pineview model flow",
+      x        = "Date",
+      y        = "Volume (CFS/day)",
+      subtitle = "sim_nat   =  pineview_flow - (diversions + releases)\ndvolume  = diversions - releases",
+      col      = "",
+      alpha    = ""
+    ) +
+    theme_bw() +
+    theme(
+      axis.text      = element_text(size = 14),
+      axis.title     = element_text(size = 16, face = "bold"),
+      plot.title     = element_text(size = 20, face = "bold"),
+      strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
+      strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
+      legend.text    = element_text(size = 14),
+      plot.subtitle  = element_text(size = 16)
+    ) +
+    scale_x_date(date_labels="%b %y",date_breaks  ="3 month")
+
+
+reservoir_flow_plot
+
+# Export plot
+ggsave(
+  "plots/reservoirs/simulated_natural_flow_pineview_flow.png",
+  plot   = reservoir_flow_plot,
+  width  = 36,
+  height = 28, 
+  units  = "cm"
+)
+
+# ****************************************************************
+# ---- Save Reservoir flows & Poudre Park modeled flow at RDS ----
+# ****************************************************************
+
+# save data to disk as RDS
+path     <- here::here("reservoirs")
+filename <- 'simulated_natural_flow_pineview_flow.rds'
+logger::log_info(
+  'saving simulated flow at Pineview with added natural flows from reservoirs as {paste0(path, "/", filename)}'
+)
+
+saveRDS(reservoir_pv_flow, paste0(path, "/", filename))
 
 # ****************************************************
 # ---- Water balance plot (Gage + reservoir data) ----
 # ****************************************************
 
-water_balance_plot <- 
+# Join CDSS gages and reservoir data
+reservoir_gages <- reservoirs %>% 
+  left_join(
+    dplyr::select(cdss_gages, structure, date, flow),
+    by = c("structure", "date")
+  ) %>% 
+  rename(gage_outflow = flow) %>%
+  mutate(
+    qnatural   = gage_outflow + dvolume,                      # calculate inflows based on stream gage data
+  ) %>% 
+  dplyr::relocate(
+    structure, wdid, date, stage, volume, diversion,
+    release, dvolume, gage_outflow, qnatural, source
+  )
+
+# plot monthly mean hydrographs for natural flow and observed flow on top of one another 
+water_balance <- reservoir_gages %>% 
+  dplyr::select(date, structure, gage_outflow, qnatural) %>% 
+  pivot_longer(
+    cols         = c(gage_outflow, qnatural)          # pivot data for plotting
+  ) %>% 
+  mutate(
+    name = factor(name, 
+                  levels=c("gage_outflow", "qnatural"))
+  ) %>% 
+  filter(date >= "2018-01-01", date <="2020-01-01")
+
+water_balance_plot <-
   ggplot() + 
-    geom_col(data = water_balance, aes(x = date, y = value, fill = variable)) + 
-    facet_grid(variable~structure) +
-    # facet_grid(structure~variable) +
+  geom_line(data = water_balance,
+           aes(x = date, y = value, col = name), size = 1.5
+  ) + 
+    facet_grid(~structure) +
     labs(
-      title    = "Water balance from reservoir data vs. stream gage",
+      title    = "Natural vs. Observed flows",
       x        = "Date",
       y        = "Volume (AF)",
-      subtitle = "outflow                    = diversions + releases \ninflow                      = dvolume + outflow \ngage_inflow    = dvolume + gage_outflow",
+      subtitle = "qnatural = gage_outflow + diversion - releases",
       fill     = ""
     ) +
     theme_bw() +
@@ -292,9 +423,11 @@ water_balance_plot <-
       plot.title     = element_text(size = 20, face = "bold"),
       strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
       strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
-      legend.text    = element_text(size = 12),
-      plot.subtitle  = element_text(size = 12)
-    )
+      legend.text    = element_text(size = 14),
+      plot.subtitle  = element_text(size = 16)
+    ) +
+  scale_x_date(date_labels="%b %y",date_breaks  ="12 month") +
+  scale_y_continuous(breaks = seq(0, 20000, 2500))
 
 water_balance_plot
 
@@ -311,13 +444,13 @@ ggsave(
 # ---- Managed vs. Natural flows ----
 # ***********************************
 
-# Join CDSS gages and reservoir data
+# Initial attempt at calculating Managed & Natural flows
 
 # ---- Natural flows ----
 # Qnatural = In_j + (In_c - Out_j) + In_b + In_L
 
 # (Out_c Out_j)
-gage_flows <- res_gages %>% 
+gage_flows <- reservoir_gages %>% 
   filter(structure %in% c("joe_wright", "chambers", "long_draw"))  %>%
   filter(date >=" 2018-09-01") %>%
   # na.omit() %>%
@@ -335,7 +468,7 @@ gage_flows <- res_gages %>%
   ) 
 
 # In_b
-barnes_flows <- res_gages %>% 
+barnes_flows <- reservoir_gages %>% 
   filter(
     structure %in% c("barnes_meadow"),
     date >=" 2018-09-01"
@@ -414,7 +547,7 @@ ggsave(
 # Qmanaged = Out_c + Out_b + Out_L
 
 # calculate Qmanaged
-managed_flows <- res_gages %>% 
+managed_flows <- reservoir_gages %>% 
   filter(structure %in% c("long_draw", "chambers", "barnes_meadow"))  %>%
   dplyr::select(date, structure, wdid, outflow, gage_outflow) %>% 
   pivot_wider(
@@ -586,102 +719,8 @@ ggsave(
   units  = "cm"
 )
 
-# *********************
-# ---- Volume plot ----
-# *********************
-
-# Summarize reservoir data for plotting
-
-# facet plot Volume @ Barnes Meadow, Chambers, Joe Wright, Long Draw, & Peterson 
-volume_data <- reservoirs %>%
-  pivot_longer(
-    cols       = c(stage, volume, diversion, release, dvolume, inflow, outflow),   # pivot data for plotting
-    names_to   = "variable",
-    values_to  = "value"
-  )  %>% 
-  filter(variable == "volume")
-
-volume_plot <-  ggplot() +  
-  geom_col(data = volume_data, aes(x = date, y = value, fill = variable)) + 
-  # facet_grid(variable~structure) +
-  facet_grid(structure~variable) +
-  labs(
-    title    = "Volume @ Poudre River Reservoirs",
-    x        = "Date",
-    y        = "Value",
-    fill     = ""
-  ) +
-  theme_bw() +
-  theme(
-    axis.text      = element_text(size = 12),
-    axis.title     = element_text(size = 14, face = "bold"),
-    plot.title     = element_text(size = 18, face = "bold"),
-    strip.text.x   = element_text(size = 12, color = "black",face = "bold"),
-    strip.text.y   = element_text(size = 12, color = "black",face = "bold"),
-    plot.caption   = element_text(size = 12)
-  )
-volume_plot
-
-# save
-# ggsave(
-#   "plots/reservoirs/reservoir_volume_plot.png",
-#   plot   = volume_plot,
-#   width  = 36,
-#   height = 28, 
-#   units  = "cm"
-# )
-
-rm(volume_data)
-
-
-# ***********************************
-# ---- Diversion & Releases plot ----
-# ***********************************
-
-# facet plot Diversions/Releases/Stage @ Barnes Meadow, Chambers, Joe Wright, Long Draw, & Peterson 
-diversion_release_data <- reservoirs %>%  
-  pivot_longer(
-    cols       = c(stage, volume, diversion, release, dvolume, inflow, outflow),   # pivot data for plotting
-    names_to   = "variable",
-    values_to  = "value"
-  )  %>% 
-  filter(variable %in%  c("diversion", "release"))         # remove volume data and outlier stage value for plotting
-
-diversion_release_plot <- 
-  ggplot() +
-  geom_col(data = diversion_release_data, aes(x = date, y = value, fill = variable)) + 
-  facet_grid(structure~variable) +
-  labs(
-    title    = "Diversions + Releases + Stage @ Poudre River Reservoirs",
-    x        = "Date",
-    y        = "AF/day",
-    fill     = ""
-  ) +
-  theme_bw() +
-  theme(
-    axis.text      = element_text(size = 12),
-    axis.title     = element_text(size = 14, face = "bold"),
-    plot.title     = element_text(size = 18, face = "bold"),
-    strip.text.x   = element_text(size = 12, color = "black",face = "bold"),
-    strip.text.y   = element_text(size = 12, color = "black",face = "bold"),
-    plot.caption   = element_text(size = 12)
-  )
-
-diversion_release_plot
-
-# save
-# ggsave(
-#   "plots/reservoirs/reservoir_flows_plot.png",
-#   plot   = diversion_release_plot,
-#   width  = 36,
-#   height = 28, 
-#   units  = "cm"
-# )
-
 
 # ***********************
-
-
 
 # ********************
 # ---- USGS gages ----
