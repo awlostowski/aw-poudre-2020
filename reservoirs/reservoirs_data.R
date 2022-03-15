@@ -323,7 +323,7 @@ reservoir_flow_plot <-
   ggplot() +
     geom_line(data = reservoir_pv_flow_long, 
               aes(x = date, y = value, col = name, alpha = name),
-              size = 1.5) +
+              size = 1) +
   scale_alpha_manual(
     values = c("pineview_flow" = 1, "sim_nat" = 0.6, "dvolume" = 1),
     guide  = 'none') +
