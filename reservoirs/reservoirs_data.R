@@ -354,7 +354,7 @@ reservoir_flow_plot
 ggsave(
   "plots/reservoirs/simulated_natural_flow_pineview_flow.png",
   plot   = reservoir_flow_plot,
-  width  = 36,
+  width  = 46,
   height = 28, 
   units  = "cm"
 )
