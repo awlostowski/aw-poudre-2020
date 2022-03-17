@@ -1379,6 +1379,93 @@ getStationInfo <- function() {
   return(structures)
   
 }
+
+# function for calculating boatable days from daily flow datasets
+boatable_days <- function(
+  flow_data, 
+  min_acceptable,
+  max_acceptable = NA,
+  timescale      = "year"
+) {
+  if (timescale == "year") {
+    
+    if (is.na(max_acceptable)) {
+      max_acceptable = 100000000000
+    }
+    
+    
+    # tabulate annual boatable days 
+    q <- flow_data %>%
+      mutate(boatable = if_else(flow >= min_acceptable & flow <= max_acceptable,1,0)) %>%
+      mutate(year = lubridate::year(date)) %>%
+      group_by(year) %>%
+      summarize(
+        boatable_days = sum(boatable, na.rm = T),
+        total_flow    = sum(flow, na.rm = T)
+      ) %>%
+      mutate(
+        year_type = case_when(
+          total_flow <= unname(quantile(total_flow, prob = 0.25)) ~ "dry",
+          total_flow >  unname(quantile(total_flow, prob = 0.25)) & 
+            total_flow <= unname(quantile(total_flow, prob = 0.5)) ~ "dry-typical",
+          total_flow > unname(quantile(total_flow, prob = 0.5)) & 
+            total_flow <= unname(quantile(total_flow, prob = 0.75)) ~ "wet-typical",
+          total_flow > unname(quantile(total_flow, prob = 0.75)) ~ "wet")
+      ) %>%
+      select(year, year_type, boatable_days) %>% 
+      ungroup()
+    
+    return(q)
+    
+  } else if(timescale == "month") {
+    
+    if (is.na(max_acceptable)) {
+      max_acceptable = 100000000000
+    }
+    
+    
+    # tabulate annual boatable days 
+    q <- flow_data %>%
+      mutate(boatable = if_else(flow >= min_acceptable & flow <= max_acceptable,1,0)) %>%
+      mutate(
+        year  = lubridate::year(date),
+        month = lubridate::month(date)
+        ) %>%
+      group_by(year, month) %>%
+      summarize(
+        boatable_days = sum(boatable, na.rm = T),
+        total_flow    = sum(flow, na.rm = T)
+      ) %>%
+      mutate(
+        date       = as.Date(paste0(year, "-", month, "-01")),
+        month_type = case_when(
+          total_flow <= unname(quantile(total_flow, prob = 0.25)) ~ "dry",
+          total_flow >  unname(quantile(total_flow, prob = 0.25)) & 
+            total_flow <= unname(quantile(total_flow, prob = 0.5)) ~ "dry-typical",
+          total_flow > unname(quantile(total_flow, prob = 0.5)) & 
+            total_flow <= unname(quantile(total_flow, prob = 0.75)) ~ "wet-typical",
+          total_flow > unname(quantile(total_flow, prob = 0.75)) ~ "wet")
+      ) %>%
+      select(date, month_type, boatable_days) %>% 
+      ungroup()
+    
+    return(q)
+  } else if(timescale == "day") {
+    
+    if (is.na(max_acceptable)) {
+      max_acceptable = 100000000000
+    }
+    
+    
+    # tabulate annual boatable days 
+    q <- flow_data %>%
+      mutate(boatable_days = if_else(flow >= min_acceptable & flow <= max_acceptable,1,0)) %>%
+      select(date, boatable_days) %>% 
+      ungroup()
+    
+    return(q)
+  }
+  }
 ##------------------------------------------------------------------------------
 ## Executed statements
 
