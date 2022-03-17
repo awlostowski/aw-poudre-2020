@@ -469,10 +469,10 @@ boatable_month <- bind_rows(boatable_month_lst) %>%
   ) %>%
   mutate(
     dboatable_cat = case_when(
-      dboatable > 0   ~ "More boatable months observed",
-      dboatable == 0  ~ "Same boatable months observed/simulated",
-      dboatable < 0   ~ "More boatable months simulated",
-    ), 
+      dboatable > 0   ~ "More boatable days observed",
+      dboatable == 0  ~ "Same boatable days observed/simulated",
+      dboatable < 0   ~ "More boatable days simulated"
+    ),
     dboatable_cat = factor(dboatable_cat,
                            levels = c(
                              "More boatable days observed",
@@ -480,7 +480,7 @@ boatable_month <- bind_rows(boatable_month_lst) %>%
                              "More boatable days simulated"))
   ) %>%
   na.omit()
-
+  
 # Plot difference in observed & simulated boatable days in months per segment
 ggplot() +
   geom_point(data = boatable_month, aes(x = dvolume, y = dboatable, col = dboatable_cat)) +
