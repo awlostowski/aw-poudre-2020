@@ -176,7 +176,7 @@ flowpref.file  <- here::here(
 )
 
 # Pineview flow model
-flow.model <- readRDS(
+flow_model <- readRDS(
   here::here('boatable_days','simulated_historical_pineview_flow.RDS')
   ) %>%
   mutate(site = 'Pineview model')
@@ -192,7 +192,7 @@ sim_flow_model <- readRDS(
 flow <- flow.usgs %>%
   rbind(flow.LAPLODCO) %>%
   rbind(flow.CLAFTCCO) %>%
-  rbind(flow.model)
+  rbind(flow_model)
 
 # join all flow records together (simulated)
 sim_flow <- flow.usgs %>%
@@ -201,16 +201,16 @@ sim_flow <- flow.usgs %>%
   rbind(sim_flow_model)
 
 # clear individual records from memory
-rm(flow.usgs, flow.CLAFTCCO, flow.LAPLODCO, flow.model)
+rm(flow.usgs, flow.CLAFTCCO, flow.LAPLODCO, flow_model)
 
-#==========================
+# ********************************************
+# ---- Loop through each segment of river ----
+# ********************************************
 
-# boatable.daily <- data.frame()
 boatable_year_lst   <- list()
 boatable_month_lst  <- list()
 boatable_day_lst    <- list()
 
-# for (site in names(site.gages)) {
 for (i in 1:nrow(site_gages)) {
 
   site_preference <- flow_pref %>%
@@ -415,26 +415,39 @@ for (i in 1:nrow(site_gages)) {
     rename("Boatable Days" = boatable_days, "Simulated Boatable Days" = sim_boatable_days) %>% 
     pivot_longer(cols = c("Boatable Days", "Simulated Boatable Days"))
   
-  # create a bar chart of boatable days for this site
-  ggplot() +
-    geom_col(data = q_year_long, aes(x = year, y = value, fill = year_type)) +
-    facet_wrap(~name) +
-    labs(
-      title  = paste('Boatable Days at', site_gages$site_name[i]),
-      subtitle = "Simulated Boatable days calculated using simulated flows\nSimulated flows = Pineview flow model - (Diversions - releases)",
-      y      = "Annual Number of Boatable Days",
-      x      = "Calendar Year",
-      fill = " "
-    ) +
-    scale_y_continuous(
-      breaks = seq(0, 150, by = 10),
-      limits = c(0, 150)) +
-    scale_fill_manual(values=c("#d7191c", "#fdae61", "#2b83ba", "#abdda4")) +
-    th
-  
+  # create a line chart of boatable days & simulated boatable days for this site
+  boatable_days_plot <- 
+    ggplot() +
+      geom_line(data = q_year_long, aes(x = year, y = value, col = name), size = 1.5) +
+      geom_point(data = q_year_long, aes(x = year, y = value, col = name), size = 3) +
+      # geom_col(data = q_year_long, aes(x = year, y = value, fill = year_type)) +
+      # facet_wrap(~name) +
+      labs(
+        title  = paste('Boatable Days at', site_gages$site_name[i]),
+        subtitle = "Simulated Boatable days calculated using simulated flows\nSimulated flows = Pineview flow model - (Diversions - releases)",
+        y      = "Annual Number of Boatable Days",
+        x      = "Calendar Year",
+        col    = ""
+      ) +
+      scale_y_continuous(
+        breaks = seq(0, 150, by = 10),
+        limits = c(0, 150)
+        ) +
+      # scale_fill_manual(values=c("#d7191c", "#fdae61", "#2b83ba", "#abdda4")) +
+      th
+    
   # save ggplot to "aw-poudre-2020/boatable_days/boatable_day_plots/"
   filename <- paste0(gsub(" ","_",  tolower(site_gages$site_name[i])), '_boatable_days.png')
-  ggsave(paste0(plot_path,'/', filename))
+  
+  # Export plot
+  ggsave(
+    paste0(plot_path,'/', filename),
+    plot   = boatable_days_plot,
+    width  = 46,
+    height = 28, 
+    units  = "cm"
+  )
+  # ggsave(paste0(plot_path,'/', filename))
   
   # iterativly add boatable days dataframes to lists (year, month, and days)
   boatable_year_lst[[i]]  <- q_year
@@ -478,12 +491,11 @@ boatable_month <- bind_rows(boatable_month_lst) %>%
                              "More boatable days observed",
                              "Same boatable days observed/simulated",
                              "More boatable days simulated"))
-  ) %>%
-  na.omit()
+  )
   
 # Plot difference in observed & simulated boatable days in months per segment
 ggplot() +
-  geom_point(data = boatable_month, aes(x = dvolume, y = dboatable, col = dboatable_cat)) +
+  geom_point(data = na.omit(boatable_month), aes(x = dvolume, y = dboatable, col = dboatable_cat)) +
   facet_wrap(~segment) +
   labs(
     title  = "Monthly Difference in observed vs. simulated Boatable days",
@@ -514,12 +526,11 @@ boatable_day   <- bind_rows(boatable_day_lst) %>%
                              "More boatable days observed",
                              "Same boatable days observed/simulated",
                              "More boatable days simulated"))
-  ) %>%
-  na.omit()
+  ) 
 
 # Plot difference in observed & simulated daily boatable days per segment
 ggplot() +
-  geom_point(data = boatable_day, aes(x = dvolume, y = dboatable, col = dboatable_cat)) +
+  geom_point(data = na.omit(boatable_day), aes(x = dvolume, y = dboatable, col = dboatable_cat)) +
   facet_wrap(~segment) +
   labs(
     title  = "Daily Difference in observed vs. simulated Boatable days",
@@ -530,5 +541,22 @@ ggplot() +
   ) +
   th
 
+# ********************************
+# ---- Save Boatable days RDS ----
+# ********************************
+
+# save data to disk as RDS
+path     <- here::here("data/boatable_days/")
+filename1 <- 'boatable_days_year.rds'
+filename2 <- 'boatable_days_month.rds'
+filename3 <- 'boatable_days_day.rds'
+
+logger::log_info(
+  'Saving yearly/monthly/daily boatable days data:\n{filename1}\n{filename2}\n{filename3}'
+)
+
+saveRDS(boatable_year, paste0(path, "/", filename1))
+saveRDS(boatable_month, paste0(path, "/", filename2))
+saveRDS(boatable_day, paste0(path, "/", filename3))
 
 
