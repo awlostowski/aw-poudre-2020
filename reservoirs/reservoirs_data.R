@@ -234,7 +234,7 @@ reservoir_pv_flow <- left_join(
   by = "date"
 ) %>% 
   mutate(
-    sim_nat = flow - dvolume          # Simulate natural flows = Pineview flows - (Diversions - Releases)
+    sim_nat = flow  + dvolume          # Simulate natural flows = Pineview flows + (Diversions - Releases)
   ) %>% 
   rename(pineview_flow = flow) 
 
@@ -464,7 +464,7 @@ reservoir_flow_plot <-
       title    = "Reservoir flows and Pineview model flow",
       x        = "Date",
       y        = "Volume (CFS/day)",
-      subtitle = "sim_nat   =  pineview_flow - (diversions + releases)\ndvolume  = diversions - releases",
+      subtitle = "sim_nat   =  pineview_flow - (diversions - releases)\ndvolume  = diversions - releases",
       col      = "",
       alpha    = ""
     ) +
