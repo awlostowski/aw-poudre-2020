@@ -171,6 +171,21 @@ for (i in 1:length(res_structures$wdid)) {
 # bind rows of all reservoirs
 reservoirs <- bind_rows(reservoir_lst)
 
+# ****************************************************************
+# ---- Save Reservoir flows & Poudre Park modeled flow at RDS ----
+# ****************************************************************
+
+# save data to disk as RDS
+path     <- here::here("reservoirs")
+filename <- 'reservoir_flows.rds'
+logger::log_info(
+  'saving reservoir flows as {paste0(path, "/", filename)}'
+)
+
+saveRDS(reservoirs, paste0(path, "/", filename))
+
+rm(path, filename)
+
 # ********************************
 # ---- Simulate Natural flows ----
 # ********************************
@@ -189,12 +204,28 @@ reservoir_totals <- reservoirs %>%
     dvolume      = diversion - release                  # calculate change in volume
   ) 
 
+# widen dataframe
+reservoirs_wide <- reservoirs %>% 
+  dplyr::select(structure, date, diversion, release, dvolume) %>% 
+  pivot_wider(
+    id_cols     = c(structure, date),
+    names_from  = "structure",
+    names_glue  = "{structure}_{.value}",
+    values_from = c(diversion, release, dvolume),
+    values_fn   = mean
+  ) 
 # *****************************************
 # ---- Calculate daily Qnatural in CFS ----
 # *****************************************
 
 # Pineview model flow
 pineview_model  <- readRDS("boatable_days/simulated_historical_pineview_flow.RDS")
+
+# convert AF to CFS
+convert_af_to_cfs <- function(af) {
+  cfs <- (af)*0.5042864
+  return(cfs)
+}
 
 # Generate daily dates using min/max dates in Pineview model 
 days <- seq.Date(
@@ -212,25 +243,60 @@ days <- seq.Date(
   dplyr::select(date, date_ym)
 
 # join days dataframe with monthly reservoir totals
-reservoir_daily <-  left_join(
+total_reservoir_daily <-  left_join(
   days,
-  reservoir_totals, 
+  reservoir_totals,
   by = c("date_ym" = "date")
 ) %>% 
+  dplyr::select(-date_ym) %>%
+  # pivot_longer(cols = c(-date))
   group_by(date) %>% 
   summarise(
     days_in_month   = days_in_month(date),
-    diversion       =  (diversion/days_in_month)*0.5042864,   # diversions calc daily CFS in month, convert AF to CFS   
-    release         =  (release/days_in_month)*0.5042864,     # releases calc daily CFS in month, convert AF to CFS   
-    dvolume         =  (dvolume/days_in_month)*0.5042864      # change in volume calc daily CFS in month, convert AF to CFS     
-  ) %>% 
+    diversion       = convert_af_to_cfs(diversion)/days_in_month,
+    release         = convert_af_to_cfs(release)/days_in_month,     # releases calc daily CFS in month, convert AF to CFS
+    dvolume         = convert_af_to_cfs(dvolume)/days_in_month      # change in volume calc daily CFS in month, convert AF to CFS
+  ) %>%
   ungroup() %>% 
   dplyr::select(-days_in_month)
 
-# Join daily reservoir flow in CFS with Pineview model results
+# join days dataframe with wide monthly individual reservoirs
+indiv_reservoir_daily <-  left_join(
+  days,
+  reservoirs_wide,
+  by = c("date_ym" = "date")
+) %>% 
+  dplyr::select(-date_ym) %>%
+  group_by(date) %>% 
+  mutate(
+    days_in_month   = days_in_month(date)
+  ) %>%
+  summarise(
+    across(everything(), ~convert_af_to_cfs(.)/days_in_month)
+  ) %>%
+  ungroup() %>% 
+  dplyr::select(-days_in_month) %>% 
+  pivot_longer(cols = c(-date)) %>% 
+  mutate(
+    flow_type = case_when(
+      grepl("diversion", name) ~ "diversion",
+      grepl("release", name)   ~ "release",
+      grepl("dvolume", name)   ~ "dvolume"
+      ),
+    structure = case_when(
+      grepl("long_draw", name)     ~ "long_draw",
+      grepl("chambers", name)      ~ "chambers",
+      grepl("joe_wright", name)    ~ "joe_wright",
+      grepl("barnes_meadow", name) ~ "barnes_meadow",
+      grepl("peterson", name)      ~ "peterson"
+    )
+  ) %>% 
+  dplyr::select(date, structure, flow_type, flow = value)
+
+# Join Total daily reservoir flow in CFS with Pineview model results
 reservoir_pv_flow <- left_join(
   pineview_model,
-  reservoir_daily,
+  total_reservoir_daily,
   by = "date"
 ) %>% 
   mutate(
@@ -304,6 +370,18 @@ logger::log_info(
 
 saveRDS(reservoir_pv_flow, paste0(path, "/", filename))
 
+rm(path, filename)
+
+# save data to disk as RDS
+path     <- here::here("reservoirs")
+filename <- 'reservoir_flows_daily.rds'
+logger::log_info(
+  'saving daily reservoir flows at individual reservoirs as {paste0(path, "/", filename)}'
+)
+
+saveRDS(indiv_reservoir_daily, paste0(path, "/", filename))
+
+rm(path, filename)
 # ********************
 # ---- CDSS gages ----
 # ********************
