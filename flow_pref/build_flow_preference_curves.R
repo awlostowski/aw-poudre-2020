@@ -160,7 +160,7 @@ if (file.exists(rating.file)) {
         is.na(flow_transform) == FALSE              ~ flow_transform
       )
     ) %>% 
-    select(-flow) %>%
+    dplyr::select(-flow) %>%
     rename(flow = flow_transform)
     
   
@@ -182,7 +182,7 @@ if (file.exists(rating.file)) {
         flow
       )
     ) %>%
-    select(-flow) %>%
+    dplyr::select(-flow) %>%
     rename(flow = flow_transform)
   
 }
@@ -439,7 +439,7 @@ for(i in 1:length(segments)){
   
   # Add summary data to data frame
   flow_pref_summary <- bind_rows(flow_pref_summary,
-                                 select(results, flow, stage, n_obs, pref.average, pci2) %>% 
+                                 dplyr::select(results, flow, stage, n_obs, pref.average, pci2) %>% 
                                    mutate(segment = segment_name,
                                           minimally.acceptable.flow = flow_thresh_min,
                                           maximally.acceptable.flow = flow_thresh_max))

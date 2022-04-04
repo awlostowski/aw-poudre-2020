@@ -103,7 +103,7 @@ if (flow == FALSE) {
 
 rating.data <- inner_join(stage, flow, by = "datetime") %>% 
   rename(stage = pineview, flow = flow) %>%
-  select(datetime, stage, flow)
+  dplyr::select(datetime, stage, flow)
 
 logger::log_info(
   "there are {nrow(rating.data)} flow/stage observations in the rating data"
@@ -141,9 +141,8 @@ pl_plot <- ggplot(rating.data, aes(x = stage, y = flow)) +
   geom_point(alpha = 0.6, size = 1.5) +
   geom_line(data = fit, aes(x = x, y = flow),  size = 1.5, color = "red") +
   labs(
-    y = "Flow @ Pine View (cfs)", 
-    x = "Rock Report stage @ Pine View (ft)",
-    title = "Poudre Rock Rating Curve - Power Law Model "
+    y = "Flow @ Poudre Park gauge (cfs)", 
+    x = "Stage @ Pineview Access (ft)"
     ) +
   theme_bw() +
   theme(
@@ -190,9 +189,8 @@ seg_lm_plot <-
     geom_line(data = fit_segment, aes(x = stage, y = fitted),  size = 1.5, color = "red") +
     scale_y_continuous(breaks = seq(0, 4000, 250)) +
     labs(
-      y = "Flow @ Pine View (cfs)", 
-      x = "Rock Report stage @ Pine View (ft)",
-      title = "Poudre Rock Rating Curve - Piecewise linear regression  "
+      y = "Flow @ Poudre Park gauge (cfs)", 
+      x = "Stage @ Pineview Access (ft)"
     ) +
     theme_bw() +
     theme(

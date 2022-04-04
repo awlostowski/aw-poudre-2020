@@ -22,8 +22,8 @@ survey <- read_csv(survey_file, col_names = headers, trim_ws = TRUE )
 # Remove all personal
 # and unnecessary info
 survey <- survey %>% 
-  select(-(collector_id:name)) %>% 
-  select(-(email:street_address))
+  dplyr::select(-(collector_id:name)) %>% 
+  dplyr::select(-(email:street_address))
 
 # Remove the following respondent IDs
 # 3 are test cases, and one gave offensive responses
@@ -122,7 +122,7 @@ survey$more_visits_pwp <- ifelse(is.na(survey$more_visits_pwp),
 # Export the respondent attributes
 # Variables for now are similar to those exported by Adam in earlier version
 survey %>% 
-  select(respondent_id, city, state, zip_code, skill, skill_rapidclass, 
+  dplyr::select(respondent_id, city, state, zip_code, skill, skill_rapidclass, 
          category, visit_freq, report_confidence, more_visits_pwp, visit_n, 
          trip_length_miles) %>% 
   saveRDS(object = .,
@@ -150,7 +150,7 @@ for(i in 1:length(reach_codes$code)){
   # Select only respondent id and columns matching reach code
   # And rename all columns by removing reach code prefix
   tmp <- survey %>% 
-    select(respondent_id, starts_with(reach_code)) %>% 
+    dplyr::select(respondent_id, starts_with(reach_code)) %>% 
     rename_all(funs(str_replace_all(., paste0(reach_code, "_"), "")))
   
   # Make a craft column from multiple columns
@@ -164,7 +164,7 @@ for(i in 1:length(reach_codes$code)){
   
   # Make data vertical
   tmp.melt <- tmp %>% 
-    select(respondent_id, craft, starts_with("flow_pref")) %>% 
+    dplyr::select(respondent_id, craft, starts_with("flow_pref")) %>% 
     melt(., value.name = "preference", variable.name = "flow", 
          id.vars = c("respondent_id", "craft")) %>% 
     mutate(preference.code = case_when(preference == "Unacceptable" ~ -2,
@@ -289,7 +289,7 @@ sep_string = "[^0-9\\.]"
 # Selecting and formatting only the economic data
 # This ugly bit of code is necessary to get the meaningful data (i.e. $ spent)
 # out of the messy responses that include special characters, strings, etc.
-econ_survey <- select(survey, respondent_id, starts_with("spend")) %>% 
+econ_survey <- dplyr::select(survey, respondent_id, starts_with("spend")) %>% 
   mutate_at(vars(starts_with("spend")), 
             funs(char_remove)) %>%  # remove all non-numeric chars but "." and "-"
   separate(spend_food, c("spend_food_lo", "spend_food_hi"), 
@@ -341,7 +341,7 @@ econ_survey <- econ_survey %>%
          spend_total_no_equip = sum(c(spend_food, spend_gas, spend_lodging, 
                                       spend_clothing, spend_other), 
                                     na.rm = T)) %>% 
-  select(respondent_id, spend_food:spend_total_no_equip) %>% 
+  dplyr::select(respondent_id, spend_food:spend_total_no_equip) %>% 
   ungroup()
 
 # Export the econ data
@@ -353,7 +353,7 @@ saveRDS(object = econ_survey,
 # Break out by spending category
 survey_summary <- econ_survey %>% 
   filter(spend_total_no_equip < 450 & spend_total_no_equip > 0) %>% 
-  select(respondent_id, starts_with("spend"), 
+  dplyr::select(respondent_id, starts_with("spend"), 
          -spend_equipment, -spend_total, -spend_total_no_equip) %>% 
   melt(id.vars = "respondent_id", value.name = "spend", variable.name = "category") %>% 
   mutate(category = str_replace(category, "spend_", "")) %>% 
