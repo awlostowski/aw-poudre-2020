@@ -86,7 +86,7 @@ flow.usgs <- dataRetrieval::readNWISdv(
   endDate = '2022-01-01') %>%
   rename(flow = 'X_00060_00003', date = Date) %>%
   mutate(site = 'USGS_06752260') %>%
-  select(date, flow, site)
+  dplyr::select(date, flow, site)
   
 flow.CLAFTCCO <- GetCDSSStationFlow(
   site_abbrev = 'CLAFTCCO',
@@ -165,4 +165,11 @@ for (site in names(site.gages)) {
   ggsave(paste0(plot_path,'/', filename))
   
 }
+
+#===========================
+# Export the flow preference data
+
+write.csv(x = boatable.days,
+          file = paste0(plot_path,'/', 'Poudre_boatable_days.csv'), 
+          row.names = F, quote = F)
 

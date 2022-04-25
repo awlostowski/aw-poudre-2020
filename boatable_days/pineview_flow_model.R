@@ -220,22 +220,26 @@ ggsave(paste0(plot_path,'/managed_flows.png'))
 # ==================================
 
 # assumptions and liberties taken
-# - replace NAs with zeros @ N Fk, valley canal, and supply canal.
-# - The N. Fork record only goes back to ~2004, so after that we are
+# - replace NAs with zeros @ valley canal, and supply canal.
+# - The N. Fork record only goes back to ~2000, so after that we are
 #   effectively ignoring inflows from the N. Fork.
 # - remove simulated flow values less than zero, which occur because
 #   N. Fk flows are over estimated
 
-poudre.park.model <- poudre.canyon.mouth %>%
-  left_join(north.fork,          by = 'date') %>%
+poudre.park.model <- north.fork %>%
+  left_join(poudre.canyon.mouth, by = 'date') %>%
   left_join(poudre.valley.canal, by = 'date') %>%
   left_join(poudre.supply.canal, by = 'date') %>%
-  rename(canyon = flow.x,
-         northfk = flow.y,
+  rename(northfk = flow.x,
+         canyon = flow.y,
          valley = flow.x.x,
          supply = flow.y.y) %>%
-  replace_na(list(valley = 0, supply = 0, northfk = 0 )) %>%
+  filter(date > as.Date('2004-10-01')) %>%
+  filter(date < as.Date('2020-10-01')) %>%
+  replace_na(list(valley = 0, supply = 0)) %>%
   mutate(model = canyon - northfk + supply + valley)
+
+poudre.park.model$model[poudre.park.model$model<0] <- 0
 
 all.flows <- poudre.park.model %>%
   inner_join(poudre.park, by = 'date') %>%
