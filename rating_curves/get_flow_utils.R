@@ -201,7 +201,8 @@ GetCDSSStationFlow <- function(
       "&parameter=DISCHRG", 
       "&startDate=", start,
       "&pageSize=", pageSize,
-      "&pageIndex=", pageIndex)
+      "&pageIndex=", pageIndex,
+      "&apiKey=zvb096GhomOSKSmpgbACBhDOCVUfs5P7")
     
     logger::log_info(
       "Downloading {site_abbrev} station flow data from CDSS API, page {pageIndex}..."
