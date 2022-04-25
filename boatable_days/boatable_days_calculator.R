@@ -166,3 +166,10 @@ for (site in names(site.gages)) {
   
 }
 
+#===========================
+# Export the flow preference data
+
+write.csv(x = boatable.days,
+          file = paste0(plot_path,'/', 'Poudre_boatable_days.csv'), 
+          row.names = F, quote = F)
+
