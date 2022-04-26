@@ -59,7 +59,7 @@ res_structures <- data.frame(
         )
 
 reservoir_lst <- list()
-
+# i = 2
 # Loop through reservoir WDIDs and pull data from CDSS using getCDSSDiversionFlow()
 for (i in 1:length(res_structures$wdid)) {
       
@@ -170,13 +170,15 @@ for (i in 1:length(res_structures$wdid)) {
 
 # bind rows of all reservoirs
 reservoirs <- bind_rows(reservoir_lst)
-
+ggplot() +
+  geom_col(data = reservoirs, aes(x = date, y = diversion, fill = structure)) +
+  facet_wrap(~structure)
 # ****************************************************************
 # ---- Save Reservoir flows & Poudre Park modeled flow at RDS ----
 # ****************************************************************
 
 # save data to disk as RDS
-path     <- here::here("reservoirs")
+path     <- here::here("data/reservoirs")
 filename <- 'reservoir_flows.rds'
 logger::log_info(
   'saving reservoir flows as {paste0(path, "/", filename)}'
@@ -189,9 +191,11 @@ rm(path, filename)
 # ********************************
 # ---- Simulate Natural flows ----
 # ********************************
+reservoirs <- readRDS("C:/Users/angus/OneDrive/Desktop/github/aw-poudre-2020/reservoirs/reservoir_flows.rds")
 
 # Join CDSS gages and reservoir data
-reservoir_totals <- reservoirs %>% 
+reservoir_totals <- 
+  reservoirs %>% 
   group_by(date) %>%                                 # Add up diversions & releases across all reservoirs
   summarise(
     volume       = sum(volume, na.rm = T),
@@ -205,27 +209,23 @@ reservoir_totals <- reservoirs %>%
   ) 
 
 # widen dataframe
-reservoirs_wide <- reservoirs %>% 
+reservoirs_wide <- 
+  reservoirs %>% 
   dplyr::select(structure, date, diversion, release, dvolume) %>% 
   pivot_wider(
-    id_cols     = c(structure, date),
+    id_cols     = c(tidyselect::matches("structure"), date),
     names_from  = "structure",
     names_glue  = "{structure}_{.value}",
     values_from = c(diversion, release, dvolume),
     values_fn   = mean
   ) 
+
 # *****************************************
 # ---- Calculate daily Qnatural in CFS ----
 # *****************************************
 
 # Pineview model flow
-pineview_model  <- readRDS("boatable_days/simulated_historical_pineview_flow.RDS")
-
-# convert AF to CFS
-convert_af_to_cfs <- function(af) {
-  cfs <- (af)*0.5042864
-  return(cfs)
-}
+pineview_model  <- readRDS("data/simulated_flow/simulated_historical_pineview_flow.RDS")
 
 # Generate daily dates using min/max dates in Pineview model 
 days <- seq.Date(
@@ -242,14 +242,16 @@ days <- seq.Date(
   ) %>% 
   dplyr::select(date, date_ym)
 
+
+
 # join days dataframe with monthly reservoir totals
-total_reservoir_daily <-  left_join(
-  days,
-  reservoir_totals,
-  by = c("date_ym" = "date")
-) %>% 
+total_reservoir_daily <-
+  days %>% 
+  left_join(
+    reservoir_totals,
+    by = c("date_ym" = "date")
+    ) %>% 
   dplyr::select(-date_ym) %>%
-  # pivot_longer(cols = c(-date))
   group_by(date) %>% 
   summarise(
     days_in_month   = days_in_month(date),
@@ -260,17 +262,24 @@ total_reservoir_daily <-  left_join(
   ungroup() %>% 
   dplyr::select(-days_in_month)
 
+# plot
+# ggplot() +
+#   geom_line(data = total_reservoir_daily, aes(x = date, y = release, col = "red"), size = 2, alpha = 0.5) +
+#   geom_line(data = total_reservoir_daily, aes(x = date, y = diversion), size = 1) 
+
 # join days dataframe with wide monthly individual reservoirs
-indiv_reservoir_daily <-  left_join(
-  days,
-  reservoirs_wide,
-  by = c("date_ym" = "date")
-) %>% 
-  dplyr::select(-date_ym) %>%
-  group_by(date) %>% 
+indiv_reservoir_daily <- days %>% 
+  left_join(
+    reservoirs_wide,
+    by = c("date_ym" = "date")
+    ) %>% 
+  group_by(date_ym) %>%
   mutate(
-    days_in_month   = days_in_month(date)
+    days_in_month   = n()
   ) %>%
+  ungroup() %>% 
+  dplyr::select(-date_ym) %>% 
+  group_by(date) %>% 
   summarise(
     across(everything(), ~convert_af_to_cfs(.)/days_in_month)
   ) %>%
@@ -294,24 +303,25 @@ indiv_reservoir_daily <-  left_join(
   dplyr::select(date, structure, flow_type, flow = value)
 
 # Join Total daily reservoir flow in CFS with Pineview model results
-reservoir_pv_flow <- left_join(
-  pineview_model,
-  total_reservoir_daily,
-  by = "date"
-) %>% 
+reservoir_pv_flow <- 
+  pineview_model %>% 
+  left_join(
+    total_reservoir_daily,
+    by = "date"
+    ) %>% 
   mutate(
-    sim_nat = flow  + dvolume          # Simulate natural flows = Pineview flows + (Diversions - Releases)
+    sim_flow = flow + (diversion - release)        # Simulate natural flows = Pineview flows + (Diversions - Releases)
   ) %>% 
-  rename(pineview_flow = flow) 
+  dplyr::relocate(date, pineview_flow = flow, sim_flow, diversion, release, dvolume)
 
 # pivot data long for plotting
 reservoir_pv_flow_long <- reservoir_pv_flow %>% 
   pivot_longer(cols = c(-date)) %>%
-  filter(name %in% c("pineview_flow", "sim_nat", "dvolume")) %>% 
+  filter(name %in% c("pineview_flow", "sim_flow", "dvolume")) %>% 
   mutate(
     name = factor(name, 
-                  levels=c("pineview_flow", "sim_nat", "dvolume"))
-                  # levels=c("pineview_flow", "sim_nat", "diversion", "release", "dvolume"))
+                  levels=c("pineview_flow", "sim_flow", "dvolume"))
+                  # levels=c("pineview_flow", "sim_flow", "diversion", "release", "dvolume"))
   ) %>% 
   filter(date >= "2018-01-01", date <= "2020-01-01")
 
@@ -322,14 +332,14 @@ reservoir_flow_plot <-
             aes(x = date, y = value, col = name, alpha = name),
             size = 1) +
   scale_alpha_manual(
-    values = c("pineview_flow" = 1, "sim_nat" = 0.6, "dvolume" = 1),
-    # values = c("pineview_flow" = 1, "sim_nat" = 0.6, "diversion" = 1, "release" = 1, "dvolume" = 1),
+    values = c("pineview_flow" = 1, "sim_flow" = 0.6, "dvolume" = 1),
+    # values = c("pineview_flow" = 1, "sim_flow" = 0.6, "diversion" = 1, "release" = 1, "dvolume" = 1),
     guide  = 'none') +
   labs(
     title    = "Reservoir flows and Pineview model flow",
     x        = "Date",
     y        = "Volume (CFS/day)",
-    subtitle = "sim_nat   =  pineview_flow - (diversions + releases)\ndvolume  = diversions - releases",
+    subtitle = "sim_flow   =  pineview_flow - (diversions + releases)\ndvolume  = diversions - releases",
     col      = "",
     alpha    = ""
   ) +
@@ -362,7 +372,7 @@ ggsave(
 # ****************************************************************
 
 # save data to disk as RDS
-path     <- here::here("reservoirs")
+path     <- here::here("data/simulated_flow")
 filename <- 'simulated_natural_flow_pineview_flow.rds'
 logger::log_info(
   'saving simulated flow at Pineview with added natural flows from reservoirs as {paste0(path, "/", filename)}'
@@ -373,7 +383,7 @@ saveRDS(reservoir_pv_flow, paste0(path, "/", filename))
 rm(path, filename)
 
 # save data to disk as RDS
-path     <- here::here("reservoirs")
+path     <- here::here("data/reservoirs")
 filename <- 'reservoir_flows_daily.rds'
 logger::log_info(
   'saving daily reservoir flows at individual reservoirs as {paste0(path, "/", filename)}'
@@ -382,6 +392,7 @@ logger::log_info(
 saveRDS(indiv_reservoir_daily, paste0(path, "/", filename))
 
 rm(path, filename)
+
 # ********************
 # ---- CDSS gages ----
 # ********************
@@ -473,115 +484,7 @@ reservoir_totals <- reservoirs %>%
     dvolume   = diversion - release                           # calculate change in volume
     ) 
 
-# *****************************************
-# ---- Calculate daily Qnatural in CFS ----
-# *****************************************
 
-# Pineview model flow
-pineview_model  <- readRDS("boatable_days/simulated_historical_pineview_flow.RDS")
-
-# Generate daily dates using min/max dates in Pineview model 
-days <- seq.Date(
-              from = min(pineview_model$date),
-              to   = max(pineview_model$date),
-              by   = "day"
-            ) %>% 
-  tibble() %>% 
-  setNames(c("date")) %>% 
-  mutate(
-    month   = lubridate::month(date),
-    year    = lubridate::year(date),
-    date_ym = as.Date(paste0(year, "-", month, "-01"))
-  ) %>% 
-  dplyr::select(date, date_ym)
-
-# join days dataframe with monthly reservoir totals
-reservoir_daily <-  left_join(
-    days,
-    reservoir_totals, 
-    by = c("date_ym" = "date")
-  ) %>% 
-  group_by(date) %>% 
-  summarise(
-    days_in_month     = days_in_month(date),
-    dvolume           =  (dvolume/days_in_month)*0.5042864       # calculate daily value per month, convert AF to CFS     
-  ) %>% 
-  ungroup() %>% 
-  dplyr::select(-days_in_month)
-
-# Join daily reservoir flow in CFS with Pineview model results
-reservoir_pv_flow <- left_join(
-  pineview_model,
-  reservoir_daily,
-  by = "date"
-  ) %>% 
-  mutate(
-    sim_nat = flow - dvolume          # Simulate natural flows = Pineview flows - (Diversions - Releases)
-    ) %>% 
-  rename(pineview_flow = flow) 
-
-# pivot data long for plotting
-reservoir_pv_flow_long <- reservoir_pv_flow %>% 
-  pivot_longer(cols = c(-date)) %>%
-  mutate(
-    name = factor(name, 
-                  levels=c("pineview_flow", "sim_nat", "dvolume"))
-  ) %>% 
-  filter(date >= "2018-01-01", date <= "2020-01-01")
-
-# pivot data long for plotting
-reservoir_flow_plot <- 
-  ggplot() +
-    geom_line(data = reservoir_pv_flow_long, 
-              aes(x = date, y = value, col = name, alpha = name),
-              size = 1) +
-  scale_alpha_manual(
-    values = c("pineview_flow" = 1, "sim_nat" = 0.6, "dvolume" = 1),
-    guide  = 'none') +
-    labs(
-      title    = "Reservoir flows and Pineview model flow",
-      x        = "Date",
-      y        = "Volume (CFS/day)",
-      subtitle = "sim_nat   =  pineview_flow - (diversions - releases)\ndvolume  = diversions - releases",
-      col      = "",
-      alpha    = ""
-    ) +
-    theme_bw() +
-    theme(
-      axis.text      = element_text(size = 14),
-      axis.title     = element_text(size = 16, face = "bold"),
-      plot.title     = element_text(size = 20, face = "bold"),
-      strip.text.x   = element_text(size = 14, color = "black",face = "bold"),
-      strip.text.y   = element_text(size = 14, color = "black",face = "bold"),
-      legend.text    = element_text(size = 14),
-      plot.subtitle  = element_text(size = 16)
-    ) +
-    scale_x_date(date_labels="%b %y",date_breaks  ="3 month")
-
-
-reservoir_flow_plot
-
-# Export plot
-ggsave(
-  "plots/reservoirs/simulated_natural_flow_pineview_flow.png",
-  plot   = reservoir_flow_plot,
-  width  = 46,
-  height = 28, 
-  units  = "cm"
-)
-
-# ****************************************************************
-# ---- Save Reservoir flows & Poudre Park modeled flow at RDS ----
-# ****************************************************************
-
-# save data to disk as RDS
-path     <- here::here("reservoirs")
-filename <- 'simulated_natural_flow_pineview_flow.rds'
-logger::log_info(
-  'saving simulated flow at Pineview with added natural flows from reservoirs as {paste0(path, "/", filename)}'
-)
-
-saveRDS(reservoir_pv_flow, paste0(path, "/", filename))
 
 # ****************************************************
 # ---- Water balance plot (Gage + reservoir data) ----

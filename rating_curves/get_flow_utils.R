@@ -1380,6 +1380,18 @@ getStationInfo <- function() {
   
 }
 
+# calculate mean flow by grouping variable
+mean_flow = function(data, group_col) {
+  data %>% 
+    group_by(.dots = lazyeval::lazy(group_col)) %>% 
+    summarize(flow = mean(flow, na.rm = T))
+}
+
+# impute missing values w/ mean
+impute_mean <- function(x) {
+  replace(x, is.na(x), mean(x, na.rm = TRUE))
+}
+
 # function for calculating boatable days from daily flow datasets
 boatable_days <- function(
   flow_data, 
@@ -1426,7 +1438,9 @@ boatable_days <- function(
     
     # tabulate annual boatable days 
     q <- flow_data %>%
-      mutate(boatable = if_else(flow >= min_acceptable & flow <= max_acceptable,1,0)) %>%
+      mutate(
+        boatable = if_else(flow >= min_acceptable & flow <= max_acceptable,1,0)
+        ) %>%
       mutate(
         year  = lubridate::year(date),
         month = lubridate::month(date)
@@ -1436,6 +1450,7 @@ boatable_days <- function(
         boatable_days = sum(boatable, na.rm = T),
         total_flow    = sum(flow, na.rm = T)
       ) %>%
+      ungroup() %>% 
       mutate(
         date       = as.Date(paste0(year, "-", month, "-01")),
         month_type = case_when(

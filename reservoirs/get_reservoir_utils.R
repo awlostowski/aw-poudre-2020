@@ -848,6 +848,12 @@ getStationInfo <- function() {
   
 }
 
+# convert AF to CFS
+convert_af_to_cfs <- function(af) {
+  cfs <- (af)*0.5042864
+  return(cfs)
+}
+
 #===========================================
 GetCDSSStationFlow <- function(
   site_abbrev,

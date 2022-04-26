@@ -58,31 +58,34 @@ logger::log_info('Getting flow data necessary for the mass balance model...')
 
 # get flow data for Poudre Canyon mouth
 poudre.canyon.mouth <- GetCDSSStationFlow(
-  site_abbrev = 'CLAFTCCO',
-) %>% 
+  site_abbrev = 'CLAFTCCO'
+  ) %>% 
   mean_flow(., date)
 
 # get flow data for Poudre Valley Canal
 poudre.valley.canal <- getCDSSDiversionFlow(
   wdid        = '0300907'
-) %>% 
+  ) %>% 
   mean_flow(., date)
 
 # get flow data for North Fork Poudre river
 north.fork <- GetCDSSStationFlow(
-  site_abbrev = 'CLANSECO',
-) %>% 
+  site_abbrev = 'CLANSECO'
+  ) %>% 
   mean_flow(., date)
 
 # get flow data for the North Poudre Supply Canal
 poudre.supply.canal <- getCDSSDiversionFlow(
   wdid        = '0300905'
-) %>% 
+  ) %>% 
   mean_flow(., date)
 
 # get flow data at Poudrepark <- TARGET DATA
-poudre.park <- getOpenDataFlow(sensor_name = "Poudre Park") %>% 
+poudre.park <- getOpenDataFlow(
+  sensor_name = "Poudre Park"
+  ) %>% 
   mean_flow(., date)
+
 
 # =====================================================
 # ---- flow comparison: Poudre Park & Canyon Mouth ----
@@ -226,19 +229,27 @@ ggsave(paste0(plot_path,'/managed_flows.png'))
 # - remove simulated flow values less than zero, which occur because
 #   N. Fk flows are over estimated
 
-poudre.park.model <- poudre.canyon.mouth %>%
+poudre.park.model <- 
+  poudre.canyon.mouth %>%
   left_join(north.fork,          by = 'date') %>%
   left_join(poudre.valley.canal, by = 'date') %>%
   left_join(poudre.supply.canal, by = 'date') %>%
-  rename(canyon = flow.x,
-         northfk = flow.y,
-         valley = flow.x.x,
-         supply = flow.y.y) %>%
+  rename(
+    canyon  = flow.x,
+    northfk = flow.y,
+    valley  = flow.x.x,
+    supply  = flow.y.y
+    ) %>%
   replace_na(list(valley = 0, supply = 0, northfk = 0 )) %>%
-  mutate(model = canyon - northfk + supply + valley)
+  mutate(
+    model = canyon - northfk + supply + valley
+    )
 
-all.flows <- poudre.park.model %>%
-  inner_join(poudre.park, by = 'date') %>%
+all.flows <- 
+  poudre.park.model %>%
+  inner_join(
+    poudre.park, by = 'date'
+    ) %>%
   rename(target = flow)
 
 # some error statistics
