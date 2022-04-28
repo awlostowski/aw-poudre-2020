@@ -229,8 +229,8 @@ convert_af_to_cfs <- function(af) {
 
 # Generate daily dates using min/max dates in Pineview model 
 days <- seq.Date(
-          from = min(pineview_model$date),
-          to   = max(pineview_model$date),
+          from = min(reservoir_totals$date),
+          to   = max(reservoir_totals$date),
           by   = "day"
         ) %>% 
   tibble() %>% 
@@ -321,15 +321,16 @@ reservoir_flow_plot <-
   geom_line(data = reservoir_pv_flow_long, 
             aes(x = date, y = value, col = name, alpha = name),
             size = 1) +
+  scale_color_manual(values = c('blue', 'green', 'red'),
+                     labels = c('Pine View observed', 'Pine View naturalized', 'net reservoir flows')) +
   scale_alpha_manual(
     values = c("pineview_flow" = 1, "sim_nat" = 0.6, "dvolume" = 1),
-    # values = c("pineview_flow" = 1, "sim_nat" = 0.6, "diversion" = 1, "release" = 1, "dvolume" = 1),
     guide  = 'none') +
   labs(
-    title    = "Reservoir flows and Pineview model flow",
+    title    = "Observed and Naturalized Pine View Flow",
     x        = "Date",
-    y        = "Volume (CFS/day)",
-    subtitle = "sim_nat   =  pineview_flow - (diversions + releases)\ndvolume  = diversions - releases",
+    y        = "Flow (cfs)",
+    subtitle = "naturalized   =  observed - (diversions + releases)\net reservoir flow  = diversions - releases",
     col      = "",
     alpha    = ""
   ) +
