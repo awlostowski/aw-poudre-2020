@@ -203,7 +203,7 @@ reservoir_flows <- readRDS(
     # values_fn   = mean
   ) 
   # mutate(site = 'Pineview model')
-names(flow)[4:18]
+#names(flow)[4:18]
 # join all flow records together
 flow <- flow.usgs %>%
   rbind(flow.LAPLODCO) %>%
@@ -297,9 +297,12 @@ for (i in 1:nrow(site_gages)) {
       nat_flow   = sum(nat_flow, na.rm = T),
       diversion  = sum(diversion, na.rm = T),
       release    = sum(release, na.rm = T),
-      dvolume    = sum(dvolume, na.rm = T)
+      dvolume    = sum(dvolume, na.rm = T),
+      n = n()
     ) %>% 
-    ungroup()
+    ungroup() %>%
+    filter(n > 300)
+    
   
   # simulated monthly total flows to join with monthly boatable days
   flow_month <- flow %>% 
@@ -314,9 +317,11 @@ for (i in 1:nrow(site_gages)) {
       nat_flow   = sum(nat_flow, na.rm = T),
       diversion  = sum(diversion, na.rm = T),
       release    = sum(release, na.rm = T),
-      dvolume    = sum(dvolume, na.rm = T)
+      dvolume    = sum(dvolume, na.rm = T),
+      n = n()
     ) %>% 
-    ungroup() %>% 
+    ungroup() %>%
+    filter(n > 25) %>%
     mutate(date  = as.Date(paste0(year, "-", month, "-01"))) %>% 
     dplyr::select(date, flow, nat_flow, diversion, release, dvolume)
   
@@ -478,7 +483,7 @@ for (i in 1:nrow(site_gages)) {
      # facet_wrap(~name) +
      labs(
        title  = paste('Boatable Days at', site_gages$site_name[i]),
-       subtitle = "Naturalized Boatable days calculated using simulated flows\nNaturalized flows = Pineview flow model - (Diversions - releases)",
+       subtitle = "Naturalized flow = Observed flow + (Diversions - Releases)",
        y      = "Annual Number of Boatable Days",
        x      = "Calendar Year",
        col    = ""
@@ -491,7 +496,7 @@ for (i in 1:nrow(site_gages)) {
      th
    
    # save ggplot to "aw-poudre-2020/boatable_days/boatable_day_plots/"
-   filename <- paste0(gsub(" ","_",  tolower(site_gages$site_name[i])), '_boatable_days.png')
+   filename <- paste0(gsub(" ","_",  tolower(site_gages$site_name[i])), '_boatable_days_NATURAL_COMPARE.png')
    
    # Export plot
    ggsave(
@@ -515,6 +520,8 @@ for (i in 1:nrow(site_gages)) {
       flow_month, sim_flow_month, flow_year, sim_flow_year, boat_month,
       q_year_long
    )
+}
+a = 2
   # boatable days from observed flow
   # boat_year <- boatable_days(
   #   # flow_data      =  filter(flow, site == site.gages[[i]]),
@@ -704,78 +711,76 @@ for (i in 1:nrow(site_gages)) {
   #   ) 
   # logger::log_info("Plotting annual boatable days @ {site_gages$site_name[i]}")
   
-  # pivot data long for plotting
-  q_year_long <- q_year %>% 
-    rename("Boatable Days" = boatable_days, "Simulated Boatable Days" = sim_boatable_days) %>% 
-    pivot_longer(cols = c("Boatable Days", "Simulated Boatable Days"))
-  
-  # create a line chart of boatable days & simulated boatable days for this site
-  boatable_days_plot <- 
-    ggplot() +
-      geom_line(data = q_year_long, aes(x = year, y = value, col = name), size = 1.5) +
-      geom_point(data = q_year_long, aes(x = year, y = value, col = name), size = 3) +
-      # geom_col(data = q_year_long, aes(x = year, y = value, fill = year_type)) +
-      # facet_wrap(~name) +
-      labs(
-        title  = paste('Boatable Days at', site_gages$site_name[i]),
-        subtitle = "Simulated Boatable days calculated using simulated flows\nSimulated flows = Pineview flow model - (Diversions - releases)",
-        y      = "Annual Number of Boatable Days",
-        x      = "Calendar Year",
-        col    = ""
-      ) +
-      scale_y_continuous(
-        breaks = seq(0, 150, by = 10),
-        limits = c(0, 150)
-        ) +
-      # scale_fill_manual(values=c("#d7191c", "#fdae61", "#2b83ba", "#abdda4")) +
-      th
-    
-  # save ggplot to "aw-poudre-2020/boatable_days/boatable_day_plots/"
-  filename <- paste0(gsub(" ","_",  tolower(site_gages$site_name[i])), '_boatable_days.png')
-  
-  # Export plot
-  ggsave(
-    paste0(plot_path,'/', filename),
-    plot   = boatable_days_plot,
-    width  = 46,
-    height = 28, 
-    units  = "cm"
-  )
-  # ggsave(paste0(plot_path,'/', filename))
-  
-  # iterativly add boatable days dataframes to lists (year, month, and days)
-  boatable_year_lst[[i]]  <- q_year
-  boatable_month_lst[[i]] <- q_month
-  boatable_day_lst[[i]]   <- q_day
-  
-  
-  
-  rm(q_year, q_month, q_day, boat_sim_day, boat_sim_month,
-     boat_sim_year, boat_year, boat_day, flow_day, sim_flow_day, 
-     flow_month, sim_flow_month, flow_year, sim_flow_year, boat_month,
-     q_year_long
-     )
-}
-
-#===========================
-# Export the flow preference data
-
-write.csv(x = boatable.days,
-          file = paste0(plot_path,'/', 'Poudre_boatable_days.csv'), 
-          row.names = F, quote = F)
+#   # pivot data long for plotting
+#   q_year_long <- q_year %>% 
+#     rename("Boatable Days" = boatable_days, "Simulated Boatable Days" = sim_boatable_days) %>% 
+#     pivot_longer(cols = c("Boatable Days", "Simulated Boatable Days"))
+#   
+#   # create a line chart of boatable days & simulated boatable days for this site
+#   boatable_days_plot <- 
+#     ggplot() +
+#       geom_line(data = q_year_long, aes(x = year, y = value, col = name), size = 1.5) +
+#       geom_point(data = q_year_long, aes(x = year, y = value, col = name), size = 3) +
+#       # geom_col(data = q_year_long, aes(x = year, y = value, fill = year_type)) +
+#       # facet_wrap(~name) +
+#       labs(
+#         title  = paste('Boatable Days at', site_gages$site_name[i]),
+#         subtitle = "Simulated Boatable days calculated using simulated flows\nSimulated flows = Pineview flow model - (Diversions - releases)",
+#         y      = "Annual Number of Boatable Days",
+#         x      = "Calendar Year",
+#         col    = ""
+#       ) +
+#       scale_y_continuous(
+#         breaks = seq(0, 150, by = 10),
+#         limits = c(0, 150)
+#         ) +
+#       # scale_fill_manual(values=c("#d7191c", "#fdae61", "#2b83ba", "#abdda4")) +
+#       th
+#     
+#   # save ggplot to "aw-poudre-2020/boatable_days/boatable_day_plots/"
+#   filename <- paste0(gsub(" ","_",  tolower(site_gages$site_name[i])), '_boatable_days.png')
+#   
+#   # Export plot
+#   ggsave(
+#     paste0(plot_path,'/', filename),
+#     plot   = boatable_days_plot,
+#     width  = 46,
+#     height = 28, 
+#     units  = "cm"
+#   )
+#   # ggsave(paste0(plot_path,'/', filename))
+#   
+#   # iterativly add boatable days dataframes to lists (year, month, and days)
+#   boatable_year_lst[[i]]  <- q_year
+#   boatable_month_lst[[i]] <- q_month
+#   boatable_day_lst[[i]]   <- q_day
+#   
+#   
+#   
+#   rm(q_year, q_month, q_day, boat_sim_day, boat_sim_month,
+#      boat_sim_year, boat_year, boat_day, flow_day, sim_flow_day, 
+#      flow_month, sim_flow_month, flow_year, sim_flow_year, boat_month,
+#      q_year_long
+#      )
+# }
+# 
+# #===========================
+# # Export the flow preference data
+# 
+# write.csv(x = boatable.days,
+#           file = paste0(plot_path,'/', 'Poudre_boatable_days.csv'), 
+#           row.names = F, quote = F)
 
 # Yearly boatable days 
 boatable_year  <- bind_rows(boatable_year_lst) %>% 
   mutate(
-    dvolume   = flow - sim_flow, 
-    dboatable = sim_boatable_days - boatable_days
+    dboatable = nat_boatable_days - boatable_days
     )
 
 # Monthly boatable days 
 boatable_month <- bind_rows(boatable_month_lst) %>% 
   mutate(
-    dvolume   = flow - sim_flow,
-    dboatable = sim_boatable_days - boatable_days
+    dboatable = nat_boatable_days - boatable_days
   ) %>%
   mutate(
     dboatable_cat = case_when(
@@ -809,8 +814,7 @@ ggplot() +
 # Daily boatable days 
 boatable_day   <- bind_rows(boatable_day_lst) %>% 
   mutate(
-    dvolume   = flow - sim_flow,
-    dboatable = sim_boatable_days - boatable_days
+    dboatable = nat_boatable_days - boatable_days
     ) %>%
   mutate(
     dboatable_cat = case_when(
