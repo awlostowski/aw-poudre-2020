@@ -1401,7 +1401,8 @@ boatable_days <- function(
       group_by(year) %>%
       summarize(
         boatable_days = sum(boatable, na.rm = T),
-        total_flow    = sum(flow, na.rm = T)
+        total_flow    = sum(flow, na.rm = T),
+        n = n()
       ) %>%
       mutate(
         year_type = case_when(
@@ -1412,9 +1413,10 @@ boatable_days <- function(
             total_flow <= unname(quantile(total_flow, prob = 0.75)) ~ "wet-typical",
           total_flow > unname(quantile(total_flow, prob = 0.75)) ~ "wet")
       ) %>%
+      ungroup() %>%
+      filter(n > 0.50*max(n)) %>%
       select(year, year_type, boatable_days) %>% 
-      ungroup()
-    
+
     return(q)
     
   } else if(timescale == "month") {
