@@ -775,7 +775,12 @@ a = 2
 boatable_year  <- bind_rows(boatable_year_lst) %>% 
   mutate(
     dboatable = nat_boatable_days - boatable_days
-    )
+    ) %>%
+  select(segment, year, year_type, boatable_days, nat_boatable_days)
+
+write.csv(x = boatable_year,
+          file = paste0(plot_path,'/', 'Poudre_boatable_days_RESERVOIRS.csv'),
+          row.names = F, quote = F)
 
 # Monthly boatable days 
 boatable_month <- bind_rows(boatable_month_lst) %>% 
